@@ -10,3 +10,5 @@ headers: set[str] = {
 
 # Missing closing parenthesis here:
 page: Response = requests.get('https://www.ucas.com/explore/search/providers?query=', headers=headers)
+
+soup = BeautifulSoup(page.text, "html.parser")
