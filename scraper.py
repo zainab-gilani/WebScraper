@@ -35,3 +35,8 @@ soup.find(class_='navbar').find_all('li')
 # get all "li" elements
 # in the ".navbar" element
 soup.select('.navbar > li')
+
+# class content
+# class+ content_details
+# class header_header
+# class location-display
