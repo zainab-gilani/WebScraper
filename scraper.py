@@ -71,17 +71,21 @@ headers = {
 # Missing closing parenthesis here:
 
 # https://www.ucas.com/explore/unis/6cadf6e5/the-university-of-law
+# link = https://www.ucas.com/explore/unis + code + university name + /courses?studyLevel=undergraduate&studyYear=2026
 
-
-exit()
+#exit()
 
 # The following is only to obtain the total number of pages to crawl
 page: Response = requests.get("https://www.ucas.com/explore/search/providers?query=", headers=headers)
 
 soup = BeautifulSoup(page.text, "html.parser")
 
+#exit()
+
+
 # TODO: Get links of all the result pages we need to crawl. We need to find total number of pages
 # Their page results are like this: https://www.ucas.com/explore/search/providers?query=&page=2
+
 
 page_results = soup.find_all("ul", class_="pagination__list")
 
@@ -150,13 +154,17 @@ for link_to_crawl in all_result_pages_to_crawl:
 
             # Uni Web Link
             university.link = link_element.get("href")
-        # endfor
+
+            # Uni Course Page Link
+            course.link = university.link + "/courses?studyLevel=undergraduate&studyYear=2026"
+            course.print()
+        #endfor
 
         # Extract Location Name
         loc_elements = content_element.select(".location-display__location")
         for loc_element in loc_elements:
             university.location = loc_element.text
-        # endfor
+        #endfor
 
         # TODO:
         # 1. Find all courses (and its basic information and dates)
@@ -166,11 +174,13 @@ for link_to_crawl in all_result_pages_to_crawl:
         relative_link = ""
         real_link = f"https://www.ucas.com{relative_link}"
 
+        #base_url = real_link + "/courses?studyLevel=undergraduate&studyYear=2026"
 
+       #print(f"Link to course page: {base_url}")
 
         all_universities.append(university)
-    # endfor
-# endfor
+    #endfor
+#endfor
 
 # DEBUG
 
