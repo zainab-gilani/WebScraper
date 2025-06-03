@@ -193,3 +193,21 @@ for university in all_universities:
 
 # TODO:
 # Save all university as JSON
+
+with open("universities.json", "w", encoding="utf-8") as f:
+    f.write("[\n")
+
+    for uni in all_universities:
+        f.write("{\n")
+        f.write(f'  "name": "{uni.name.strip()}", \n')
+        f.write(f'  "location": "{uni.location.strip()}", \n')
+        f.write(f'  "link": "{uni.link.strip()}", \n')
+        f.write("   }")
+
+        if i < len(all_universities) - 1:
+            f.write(",\n")
+        else:
+            f.write("\n")
+        #endif
+        f.write("]\n")
+    #endfor
