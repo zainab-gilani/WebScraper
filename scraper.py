@@ -9,7 +9,10 @@ from requests import Response
 class Course:
     def __init__(self):
         self.name = ""
+        self.course_type = ""  # e.g. BSc (Hons)
         self.duration = ""
+        self.mode = ""  # e.g. Full-time / Part-time
+        self.location = ""
         self.start_date = ""
         self.link = ""
 
@@ -53,7 +56,7 @@ class University:
     def find_courses(self, link):
         return
     #enddef
-#endofr
+#endofor
 
 # All universities
 all_universities: [University] = []
@@ -75,12 +78,116 @@ headers = {
 
 #exit()
 
-# The following is only to obtain the total number of pages to crawl
-page: Response = requests.get("https://www.ucas.com/explore/search/providers?query=", headers=headers)
+#page: Response = requests.get("https://www.ucas.com/explore/search/providers?query=", headers=headers)
+
+# Extract courses
+page = requests.get("https://www.ucas.com/explore/unis/6cadf6e5/the-university-of-law/courses?studyLevel=undergraduate&studyYear=2026", headers=headers)
 
 soup = BeautifulSoup(page.text, "html.parser")
 
-#exit()
+see_all_buttons = soup.find_all("a")
+
+target_see_all_link = ""
+
+# Gets course page links
+for button in see_all_buttons:
+    if button.text.strip() == "See all":
+        href = button.get("href", "")
+        if "explore/search/courses" in href and "The%20University%20of%20Law" in href:
+            target_see_all_link = href
+            break
+        #endif
+    #endif
+#endfor
+
+print(target_see_all_link)
+
+search_page = requests.get(target_see_all_link, headers=headers)
+search_soup = BeautifulSoup(search_page.text, "html.parser")
+
+search_page_results = search_soup.find_all("ul", class_="pagination__list elevation-low")
+
+total_search_pages = 0
+
+for search_page_result in search_page_results:
+    result_items = search_page_result.find_all("li", class_="pagination__item")
+
+    for result_item in result_items:
+        result_links = result_item.find_all("a")
+
+        for item in result_links:
+            if item.has_attr("aria-label"):
+                page_label = item.attrs["aria-label"]
+
+                if "last page" in page_label:
+                    total_search_pages = int(item.text)
+                #endif
+            #endif
+        #endif
+    #endfor
+#endfor
+
+print(f"Total results for search: {total_search_pages}")
+
+# Build links pages on total pages found in results that we will need to crawl
+
+for i in range(2, total_search_pages+1):
+    next_page = target_see_all_link + f"&page={i}"
+    all_result_pages_to_crawl.append(next_page)
+#endfor
+
+# We will re-visit this first page to scrape all universities from this page
+all_result_pages_to_crawl.insert(0, "https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D=2026&refinementList%5Buniversity%5D%5B0%5D=The%20University%20of%20Law")
+
+print(all_result_pages_to_crawl)
+
+for link_to_crawl in all_result_pages_to_crawl:
+    # The following is only to obtain the total number of pages to crawl
+    course_page: Response = requests.get(link_to_crawl, headers=headers)
+    course_soup = BeautifulSoup(course_page.text, "html.parser")
+
+    # find all the centered elements
+    # on the page
+    content_elements = course_soup.find_all("div", class_="content__details")
+
+    print(f"Found {len(content_elements)} courses...")
+
+    # Grab all university content cards from page
+    for content_element in content_elements:
+        course = Course()
+
+        # name
+        name_tag = content_element.select_one("p.header__text")
+        if name_tag:
+            course.name = name_tag.text.strip()
+
+        # link
+        link_tag = content_element.select_one("a.header")
+        if link_tag:
+            course.link = link_tag.get("href")
+
+        # details
+        details_tag = content_element.select_one("p.course-display__details")
+        if details_tag:
+            details = details_tag.get_text(separator=" ·", strip=True)
+        else:
+            details = "N/A"
+
+        # ucas points
+        points_tag = content_element.select_one("p.course-display__tariff")
+        if points_tag:
+            points = points_tag.text.strip()
+        else:
+            points = "N/A"
+
+        print(f"Course name: {course.name}")
+        print(f"Course link: {course.link}")
+        print(f"Details: {details}")
+        print(f"UCAS POINTS: {points}")
+
+
+# The following is only to obtain the total number of pages to crawl
+exit()
 
 
 # TODO: Get links of all the result pages we need to crawl. We need to find total number of pages
@@ -157,7 +264,7 @@ for link_to_crawl in all_result_pages_to_crawl:
 
             # Uni Course Page Link
             course.link = university.link + "/courses?studyLevel=undergraduate&studyYear=2026"
-            course.print()
+            #course.print()
         #endfor
 
         # Extract Location Name
@@ -174,16 +281,13 @@ for link_to_crawl in all_result_pages_to_crawl:
         relative_link = ""
         real_link = f"https://www.ucas.com{relative_link}"
 
-        #base_url = real_link + "/courses?studyLevel=undergraduate&studyYear=2026"
-
-       #print(f"Link to course page: {base_url}")
-
         all_universities.append(university)
     #endfor
 #endfor
 
 # DEBUG
 
+exit()
 print(f"Total unis found: {len(all_universities)}")
 
 # Print all universities obtained
