@@ -1,109 +1,16 @@
+#!/usr/bin/python3
+
 import requests
 from bs4 import BeautifulSoup
 from requests import Response
 
+from models.University import *
+from models.Course import *
+from models.EntryRequirement import *
+
 # CONSIDERATIONS:
 # 1. Scraping might result in temporary network failures or blocks
 # 2.
-
-class Course:
-    def __init__(self):
-        self.name = ""
-        self.course_type = ""  # e.g. BSc (Hons)
-        self.duration = ""
-        self.mode = ""  # e.g. Full-time / Part-time
-        self.location = ""
-        self.start_date = ""
-        self.link = ""
-
-        self.requirements: [EntryRequirement] = []
-    #endef
-
-    def print(self):
-        print(f"Course link: {self.link}")
-    #enddef
-
-    def fetch_requirements(self):
-        pass
-    #enddef
-
-    def to_json(self):
-        return {
-            "name": self.name,
-            "course_type": self.course_type,
-            "duration": self.duration,
-            "mode": self.mode,
-            "location": self.location,
-            "start_date": self.start_date,
-            "link": self.link,
-            "requirements": [r.to_json for r in self.requirements]
-        }
-#endclass
-
-class EntryRequirement:
-    def __init__(self):
-        # Subject will be name of required subject OR "UCAS Points"
-        # when the required_points are stored
-        self.subject = ""
-
-        # When subject is "UCAS Points", this is empty
-        # instead we use `required_points`
-        self.required_grade = ""
-
-        # This will store UCAS points when available
-        self.required_points = 0
-    #enddef
-
-    def to_json(self):
-        return {
-            "subject": self.subject,
-            "required grade": self.required_grade,
-            "required points": self.required_points
-        }
-    #enddef
-#endclass
-
-# Represents and stores university details
-class University:
-    def __init__(self):
-        self.name = ""
-        self.location = ""
-        self.link = ""
-
-        self.courses: [Course] = []
-    #enddef
-
-    def print(self):
-        print(f"Name: {self.name}, Location: {self.location}, Link: {self.link}")
-    #enddef
-
-    def fetch_courses(self):
-        pass
-    #enddef
-
-    def to_json(self):
-        return {
-            "name": self.name,
-            "location": self.location,
-            "link": self.link
-            "courses": [c.to_json for c in self.courses]
-        }
-#endofor
-
-if __name__ == "__main__":
-    all_universities = []
-
-    total_pages = fetch_total_pages()
-
-    for page in range(1, total_pages + 1):
-        url = f"https://www.ucas.com/explore/search/providers?query=&page={page}"
-        all_universities += fetch_universities_from_page(url)
-
-    for uni in all_universities:
-        uni.fetch_courses()
-
-    save_json_file([u.to_json() for u in all_universities], "universities.json")
-
 
 # All universities
 all_universities: [University] = []
@@ -183,6 +90,8 @@ for i in range(2, total_search_pages+1):
     all_result_pages_to_crawl.append(next_page)
 #endfor
 
+ss = University()
+
 # We will re-visit this first page to scrape all universities from this page
 all_result_pages_to_crawl.insert(0, "https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D=2026&refinementList%5Buniversity%5D%5B0%5D=The%20University%20of%20Law")
 
@@ -235,32 +144,10 @@ for link_to_crawl in all_result_pages_to_crawl:
         else:
             course.required_points = "N/A"
         #endif
-
-        with open("courses.json", "w", encoding="utf-8") as f:
-            f.write("[\n")
-
-            for course in :
-                f.write("{\n")
-                f.write(f'  "name": "{course.name.strip()}", \n')
-                f.write(f'  "link": "{course.link.strip()}", \n')
-                f.write(f'  "course type": "{course.course_type.strip()}", \n')
-                f.write(f'  "mode": "{course.mode.strip()}", \n')
-                f.write(f'  "location": "{course.location.strip()}", \n')
-                f.write(f'  "start date": "{course.start_date.strip()}", \n')
-                f.write(f'  "tariff points": "{course.required_points.strip()}", \n')
-                f.write("   }")
-
-                if i < len(all_universities) - 1:
-                    f.write(",\n")
-                else:
-                    f.write("\n")
-                # endif
-                f.write("]\n")
-            # endfor
-
+    #endfor
+#endfor
 
 # The following is only to obtain the total number of pages to crawl
-exit()
 
 
 # TODO: Get links of all the result pages we need to crawl. We need to find total number of pages
@@ -355,12 +242,17 @@ for link_to_crawl in all_result_pages_to_crawl:
         real_link = f"https://www.ucas.com{relative_link}"
 
         all_universities.append(university)
+
+        # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
+        break
     #endfor
+
+    # ALLOW ONLY ONE PAGE TO BE FOUND AND PARSED
+    break
 #endfor
 
 # DEBUG
 
-exit()
 print(f"Total unis found: {len(all_universities)}")
 
 # Print all universities obtained
