@@ -8,6 +8,9 @@ from datetime import date
 
 from JSONWriter import *
 from scrape_search_results import *
+from models.University import University
+from models.Course import Course
+from models.EntryRequirement import EntryRequirement
 
 # CONSIDERATIONS:
 # 1. Scraping might result in temporary network failures or blocks
@@ -54,6 +57,7 @@ for link_to_crawl in all_result_pages_to_crawl:
     for content_element in content_elements:
         # Create and initialize a university object
         university = University()
+        course = Course()
 
         # extract the tag <a> HTML elements related to the quote
         link_elements = content_element.select(".header")
@@ -98,6 +102,9 @@ for link_to_crawl in all_result_pages_to_crawl:
         all_universities.append(university)
 
         university.fetch_courses(headers)
+
+        course.fetch_requirements(headers)
+
 
         # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
         break

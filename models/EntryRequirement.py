@@ -1,3 +1,7 @@
+import requests
+from bs4 import BeautifulSoup
+from requests import Response
+
 class EntryRequirement:
     """
     Represents a requirement such as the required grade or UCAS points
@@ -16,6 +20,10 @@ class EntryRequirement:
 
     # enddef
 
+    def fetch_requirements(self):
+        pass
+    #enddef
+
     def to_json(self):
         """
         :return: Creates and returns a JSON dictionary
@@ -27,6 +35,4 @@ class EntryRequirement:
         }
         return json
     # enddef
-
-
 # endclass

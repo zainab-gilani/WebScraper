@@ -73,13 +73,13 @@ class University:
                     course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
                 #endif
 
-                # ucas points
-                points_tag = content_element.select_one("p.course-display__tariff")
-                if points_tag:
-                    course.required_points = points_tag.text.strip()
-                else:
-                    course.required_points = "N/A"
-                #endif
+                # # ucas points
+                # points_tag = content_element.select_one("p.course-display__tariff")
+                # if points_tag:
+                #     course.required_points = points_tag.text.strip()
+                # else:
+                #     course.required_points = "N/A"
+                # #endif
 
                 self.courses.append(course)
 

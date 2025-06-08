@@ -1,4 +1,9 @@
-from models import EntryRequirement
+import requests
+
+from bs4 import BeautifulSoup
+from requests import Response
+from models.EntryRequirement import EntryRequirement
+
 
 class Course:
     """
@@ -22,8 +27,35 @@ class Course:
         print(f"Course link: {self.link}")
     # enddef
 
-    def fetch_requirements(self):
-        pass
+    def fetch_requirements(self, headers):
+        single_course_page: Response = requests.get(self.link, headers=headers)
+        single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
+
+        content_elements = single_course_soup.find_all("ul", class_="accordion--clear")
+
+        # Extract all university content cards from page
+        for content_element in content_elements:
+            requirement = EntryRequirement()
+
+            # ucas points
+            points_tag = content_element.select_one("p.course-display__tariff")
+            if points_tag:
+                requirement.required_points = points_tag.text.strip()
+            else:
+                requirement.required_points = "N/A"
+            # endif
+
+            grades_tag = content_element.select_one("h2.accordion__label")
+            if grades_tag:
+                requirement.required_grade = grades_tag.text.strip()
+            else:
+                requirement.required_grade = "N/A"
+            # endif
+
+            self.requirements.append(requirement)
+
+            break
+        # endfor
     # enddef
 
     def to_json(self) -> dict:
