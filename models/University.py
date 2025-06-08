@@ -18,18 +18,22 @@ class University:
 
     def fetch_courses(self):
         pass
-
     # enddef
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """
         :return: Creates and returns a JSON dictionary
         """
+        courses_json: [dict] = []
+        for course in self.courses:
+            courses_json.append(course.to_json())
+        #endfor
+
         json = {
             "name": self.name,
             "location": self.location,
             "link": self.link,
-            "courses": [c.to_json for c in self.courses]
+            "courses": courses_json
         }
         return json
     #enddef

@@ -26,10 +26,17 @@ class Course:
         pass
     # enddef
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """
         :return: Creates and returns a JSON dictionary
         """
+
+        requirements_json: [dict] = []
+
+        for requirement in self.requirements:
+            requirements_json.append(requirement.to_json())
+        #endfor
+
         json = {
             "name": self.name,
             "course_type": self.course_type,
@@ -38,7 +45,7 @@ class Course:
             "location": self.location,
             "start_date": self.start_date,
             "link": self.link,
-            "requirements": [r.to_json for r in self.requirements]
+            "requirements": requirements_json
         }
 
         return json
