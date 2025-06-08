@@ -22,6 +22,22 @@ class Course:
     def print(self):
         print(f"Course link: {self.link}")
     #enddef
+
+    def fetch_requirements(self):
+        pass
+    #enddef
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "course_type": self.course_type,
+            "duration": self.duration,
+            "mode": self.mode,
+            "location": self.location,
+            "start_date": self.start_date,
+            "link": self.link,
+            "requirements": [r.to_json for r in self.requirements]
+        }
 #endclass
 
 class EntryRequirement:
@@ -36,6 +52,14 @@ class EntryRequirement:
 
         # This will store UCAS points when available
         self.required_points = 0
+    #enddef
+
+    def to_json(self):
+        return {
+            "subject": self.subject,
+            "required grade": self.required_grade,
+            "required points": self.required_points
+        }
     #enddef
 #endclass
 
@@ -53,10 +77,33 @@ class University:
         print(f"Name: {self.name}, Location: {self.location}, Link: {self.link}")
     #enddef
 
-    def find_courses(self, link):
-        return
+    def fetch_courses(self):
+        pass
     #enddef
+
+    def to_json(self):
+        return {
+            "name": self.name,
+            "location": self.location,
+            "link": self.link
+            "courses": [c.to_json for c in self.courses]
+        }
 #endofor
+
+if __name__ == "__main__":
+    all_universities = []
+
+    total_pages = fetch_total_pages()
+
+    for page in range(1, total_pages + 1):
+        url = f"https://www.ucas.com/explore/search/providers?query=&page={page}"
+        all_universities += fetch_universities_from_page(url)
+
+    for uni in all_universities:
+        uni.fetch_courses()
+
+    save_json_file([u.to_json() for u in all_universities], "universities.json")
+
 
 # All universities
 all_universities: [University] = []
@@ -152,7 +199,7 @@ for link_to_crawl in all_result_pages_to_crawl:
 
     print(f"Found {len(content_elements)} courses...")
 
-    # Grab all university content cards from page
+    # Extract all university content cards from page
     for content_element in content_elements:
         course = Course()
 
@@ -169,21 +216,47 @@ for link_to_crawl in all_result_pages_to_crawl:
         # details
         details_tag = content_element.select_one("p.course-display__details")
         if details_tag:
-            details = details_tag.get_text(separator=" ·", strip=True)
+            details = details_tag.get_text(strip=True)
+            parts = [p.strip() for p in details.split("·")]
+
+            # Splits details into different parts
+            course.course_type = parts[0]
+            course.duration = parts[1]
+            course.mode = parts[2]
+            course.location = parts[3]
+            course.start_date = parts[4]
         else:
-            details = "N/A"
+            course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
 
         # ucas points
         points_tag = content_element.select_one("p.course-display__tariff")
         if points_tag:
-            points = points_tag.text.strip()
+            course.required_points = points_tag.text.strip()
         else:
-            points = "N/A"
+            course.required_points = "N/A"
+        #endif
 
-        print(f"Course name: {course.name}")
-        print(f"Course link: {course.link}")
-        print(f"Details: {details}")
-        print(f"UCAS POINTS: {points}")
+        with open("courses.json", "w", encoding="utf-8") as f:
+            f.write("[\n")
+
+            for course in :
+                f.write("{\n")
+                f.write(f'  "name": "{course.name.strip()}", \n')
+                f.write(f'  "link": "{course.link.strip()}", \n')
+                f.write(f'  "course type": "{course.course_type.strip()}", \n')
+                f.write(f'  "mode": "{course.mode.strip()}", \n')
+                f.write(f'  "location": "{course.location.strip()}", \n')
+                f.write(f'  "start date": "{course.start_date.strip()}", \n')
+                f.write(f'  "tariff points": "{course.required_points.strip()}", \n')
+                f.write("   }")
+
+                if i < len(all_universities) - 1:
+                    f.write(",\n")
+                else:
+                    f.write("\n")
+                # endif
+                f.write("]\n")
+            # endfor
 
 
 # The following is only to obtain the total number of pages to crawl
