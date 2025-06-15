@@ -2,10 +2,11 @@
 
 import urllib.parse
 import requests
+import re
+
 from bs4 import BeautifulSoup
 from requests import Response
 from datetime import date
-
 from JSONWriter import *
 from scrape_search_results import *
 from models.University import University
@@ -18,7 +19,6 @@ from models.EntryRequirement import EntryRequirement
 
 # All universities
 all_universities: [University] = []
-
 
 # Scraping logic...
 
@@ -57,7 +57,6 @@ for link_to_crawl in all_result_pages_to_crawl:
     for content_element in content_elements:
         # Create and initialize a university object
         university = University()
-        course = Course()
 
         # extract the tag <a> HTML elements related to the quote
         link_elements = content_element.select(".header")
@@ -103,15 +102,15 @@ for link_to_crawl in all_result_pages_to_crawl:
 
         university.fetch_courses(headers)
 
-        course.fetch_requirements(headers)
-
-
-        # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
-        break
+        save_json(all_universities)
+        print("saved")
+        #
+        # # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
+        # break
     #endfor
 
-    # ALLOW ONLY ONE PAGE TO BE FOUND AND PARSED
-    break
+    # # ALLOW ONLY ONE PAGE TO BE FOUND AND PARSED
+    # break
 #endfor
 
 # DEBUG
@@ -119,9 +118,9 @@ for link_to_crawl in all_result_pages_to_crawl:
 print(f"Total unis found: {len(all_universities)}")
 
 # Print all universities obtained
-for university in all_universities:
+for i, university in all_universities:
     university.print()
 #endfor
 
 # Save all university as JSON
-save_json(all_universities)
+#save_json(all_universities)
