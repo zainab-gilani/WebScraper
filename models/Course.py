@@ -1,4 +1,5 @@
 import requests
+import re
 
 from bs4 import BeautifulSoup
 from requests import Response
@@ -25,38 +26,45 @@ class Course:
 
     def print(self):
         print(f"Course link: {self.link}")
+        print(f"Entry requirements: {self.requirements}")
     # enddef
 
     def fetch_requirements(self, headers):
+        """
+        Fetches requirements for the course from its page
+        :param headers: browser headers
+        """
+        requirement = EntryRequirement()
+
         single_course_page: Response = requests.get(self.link, headers=headers)
         single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
 
         content_elements = single_course_soup.find_all("ul", class_="accordion--clear")
 
-        # Extract all university content cards from page
         for content_element in content_elements:
-            requirement = EntryRequirement()
+            grades_tag = content_element.find("h2", class_="accordion__label")
 
-            # ucas points
-            points_tag = content_element.select_one("p.course-display__tariff")
-            if points_tag:
-                requirement.required_points = points_tag.text.strip()
-            else:
-                requirement.required_points = "N/A"
-            # endif
-
-            grades_tag = content_element.select_one("h2.accordion__label")
-            if grades_tag:
+            if grades_tag and "A Level" in grades_tag.text():
                 requirement.required_grade = grades_tag.text.strip()
             else:
                 requirement.required_grade = "N/A"
             # endif
 
             self.requirements.append(requirement)
+        #endfor
 
-            break
-        # endfor
-    # enddef
+        # # Extract all university content cards from page
+        # for content_element in content_elements:
+        #     requirement = EntryRequirement()
+        #
+        #     # ucas points
+        #     points_tag = content_element.select_one("p.course-display__tariff")
+        #     if points_tag:
+        #         requirement.required_points = points_tag.text.strip()
+        #     else:
+        #         requirement.required_points = "N/A"
+        #     # endif
+    #enddef
 
     def to_json(self) -> dict:
         """
@@ -83,4 +91,3 @@ class Course:
         return json
     # enddef
 # endclass
-
