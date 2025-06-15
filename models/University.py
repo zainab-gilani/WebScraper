@@ -1,8 +1,9 @@
 # Represents and stores university details
 import requests
+import re
+
 from bs4 import BeautifulSoup
 from requests import Response
-
 from models.Course import Course
 from scrape_search_results import *
 
@@ -43,7 +44,6 @@ class University:
 
             print(f"Found {len(content_elements)} courses...")
 
-            # Extract all university content cards from page
             for content_element in content_elements:
                 course = Course()
 
@@ -73,22 +73,35 @@ class University:
                     course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
                 #endif
 
-                # # ucas points
-                # points_tag = content_element.select_one("p.course-display__tariff")
-                # if points_tag:
-                #     course.required_points = points_tag.text.strip()
-                # else:
-                #     course.required_points = "N/A"
-                # #endif
+
+                # ucas points
+                points_tag = content_element.select_one("p.course-display__tariff")
+
+                if points_tag:
+                    course.required_points = points_tag.text.strip()
+
+                    # Uses RegEx to scrape just the amount of points, not the entire text
+                    match = re.search("\d+\s*-\s*\d+|\d+")
+                    if match:
+                        clean_points = match.group(0)
+                    else:
+                        course.required_points = "N/A"
+                    #endif
+                else:
+                    course.required_points = "N/A"
+                #endif
 
                 self.courses.append(course)
 
-                # ONLY ONE COURSE FOR NOW DURING TESTING
-                break
+                course.fetch_requirements(headers)
+                course.print()
+
+                # # ONLY ONE COURSE FOR NOW DURING TESTING
+                # break
             #endfor
 
-            # ONLY ONE COURSE PAGE FOR NOW DURING TESTING
-            break
+            # # ONLY ONE COURSE PAGE FOR NOW DURING TESTING
+            # break
         #endfor
     # enddef
 
