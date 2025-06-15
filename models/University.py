@@ -73,7 +73,6 @@ class University:
                     course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
                 #endif
 
-
                 # ucas points
                 points_tag = content_element.select_one("p.course-display__tariff")
 
@@ -81,11 +80,11 @@ class University:
                     course.required_points = points_tag.text.strip()
 
                     # Uses RegEx to scrape just the amount of points, not the entire text
-                    match = re.search("\d+\s*-\s*\d+|\d+")
+                    match = re.search("\d+\s*-\s*\d+|\d+", points_tag)
                     if match:
                         clean_points = match.group(0)
                     else:
-                        course.required_points = "N/A"
+                        course.required_points = ""
                     #endif
                 else:
                     course.required_points = "N/A"

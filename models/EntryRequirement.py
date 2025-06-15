@@ -13,11 +13,17 @@ class EntryRequirement:
 
         # When subject is "UCAS Points", this is empty
         # instead we use `required_points`
+        # Empty grade means this subject just needs to be taken
         self.required_grade = ""
 
         # This will store UCAS points when available
-        self.required_points = 0
+        # -1 Means there are NO UCAS point requirements
+        # Some courses have a range
+        self.required_points_min = -1
 
+        # -1 Means there are NO UCAS point requirements
+        # Maximum points (if applicable)
+        self.required_points_max = -1
     # enddef
 
     def fetch_requirements(self):
@@ -31,7 +37,8 @@ class EntryRequirement:
         json = {
             "subject": self.subject,
             "required grade": self.required_grade,
-            "required points": self.required_points
+            "minimum required points": self.required_points_min,
+            "maximum required points": self.required_points_max
         }
         return json
     # enddef

@@ -13,6 +13,11 @@ from models.University import University
 from models.Course import Course
 from models.EntryRequirement import EntryRequirement
 
+# To prevent us from scraping the entire website, we just want ONE uni that has requirements and one without
+# These flags get enabled when one match is found and then we stop looking for more
+FOUND_WITH_REQ = False
+FOUND_WITHOUT_REQ = False
+
 # CONSIDERATIONS:
 # 1. Scraping might result in temporary network failures or blocks
 # 2.
@@ -94,23 +99,36 @@ for link_to_crawl in all_result_pages_to_crawl:
         # 1. Find all courses (and its basic information and dates)
         # 2. For each course extract grade requirements and UCAS points
         # 3.
-
-        relative_link = ""
-        real_link = f"https://www.ucas.com{relative_link}"
-
-        all_universities.append(university)
-
         university.fetch_courses(headers)
 
-        save_json(all_universities)
-        print("saved")
-        #
+        if len(university.courses) != 0:
+            for course in university.courses:
+                if len(course.requirements) != 0:
+                    FOUND_WITH_REQ = True
+                else:
+                    FOUND_WITHOUT_REQ = True
+                #endif
+            #endfor
+        else:
+            FOUND_WITHOUT_REQ = True
+        #endif
+
+        # TEST: Decide if we should continue or stop
+
         # # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
-        # break
+        if FOUND_WITH_REQ and FOUND_WITHOUT_REQ:
+            break
+        # endif
+
+        all_universities.append(university)
     #endfor
 
     # # ALLOW ONLY ONE PAGE TO BE FOUND AND PARSED
     # break
+
+    if FOUND_WITH_REQ and FOUND_WITHOUT_REQ:
+        break
+    #endif
 #endfor
 
 # DEBUG
@@ -122,5 +140,5 @@ for i, university in all_universities:
     university.print()
 #endfor
 
-# Save all university as JSON
-#save_json(all_universities)
+save_json(all_universities)
+print("saved")
