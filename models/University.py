@@ -5,6 +5,7 @@ import re
 from bs4 import BeautifulSoup
 from requests import Response
 from models.Course import Course
+from models.EntryRequirement import EntryRequirement
 from scrape_search_results import *
 
 class University:
@@ -75,20 +76,38 @@ class University:
 
                 # ucas points
                 points_tag = content_element.select_one("p.course-display__tariff")
+                requirement = EntryRequirement()
+                requirement.required_points_min = -1
+                requirement.required_points_max = -1
 
                 if points_tag:
-                    course.required_points = points_tag.text.strip()
+                    required_points = points_tag.text.strip()
 
-                    # Uses RegEx to scrape just the amount of points, not the entire text
-                    match = re.search("\d+\s*-\s*\d+|\d+", points_tag)
-                    if match:
-                        clean_points = match.group(0)
-                    else:
-                        course.required_points = ""
-                    #endif
+                    try:
+                        # Uses RegEx to scrape just the amount of points, not the entire text
+                        match = re.search(r"(\d+)\s*-\s*(\d+)", required_points)
+                        if match:
+                            requirement.required_points_min = int(match.group(1))
+                            requirement.required_points_max = int(match.group(2))
+                        else:
+                            match = re.search(r"(\d+)", required_points)
+                            if match:
+                                num = int(match.group(1))
+                                requirement.required_points_min = num
+                            else:
+                                requirement.required_points_min = -1
+                                requirement.required_points_max = -1
+                            #endif
+                        #endif
+                    except:
+                        requirement.required_points_min = -1
+                        requirement.required_points_max = -1
+                    #endtry
                 else:
-                    course.required_points = "N/A"
+                    pass
                 #endif
+
+                course.requirements.append(requirement)
 
                 self.courses.append(course)
 

@@ -39,19 +39,16 @@ class Course:
         single_course_page: Response = requests.get(self.link, headers=headers)
         single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
 
-        content_elements = single_course_soup.find_all("ul", class_="accordion--clear")
+        grades_tag = single_course_soup.find("h2", class_="accordion__label")
 
-        for content_element in content_elements:
-            grades_tag = content_element.find("h2", class_="accordion__label")
+        if grades_tag and "A level" in grades_tag.text:
+            requirement.required_grade = grades_tag.text.strip()
+        else:
+            requirement.required_grade = "N/A"
+        # endif
 
-            if grades_tag and "A Level" in grades_tag.text():
-                requirement.required_grade = grades_tag.text.strip()
-            else:
-                requirement.required_grade = "N/A"
-            # endif
-
-            self.requirements.append(requirement)
-        #endfor
+        self.requirements.append(requirement)
+    #endfor
 
         # # Extract all university content cards from page
         # for content_element in content_elements:

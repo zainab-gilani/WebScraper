@@ -95,6 +95,9 @@ for link_to_crawl in all_result_pages_to_crawl:
             university.location = loc_element.text
         #endfor
 
+        save_json(all_universities)
+        print("SAVED")
+
         # TODO:
         # 1. Find all courses (and its basic information and dates)
         # 2. For each course extract grade requirements and UCAS points
