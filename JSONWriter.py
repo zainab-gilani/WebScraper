@@ -10,7 +10,7 @@ def save_json(universities: [University]):
     university_json: [dict] = []
 
     for uni in universities:
-        university_json.append(uni.to_json())
+        university_json.append(uni.to_dict())
     #endfor
 
     with open("universities.json", "w", encoding="utf-8") as f:

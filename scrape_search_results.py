@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from requests import Response
+from network_helper import get_with_retry
 
 def get_links_to_crawl(link, headers):
     """
@@ -14,7 +15,13 @@ def get_links_to_crawl(link, headers):
     all_result_pages_to_crawl: [str] = []
 
     # 1. Visit main search page
-    page: Response = requests.get(link, headers=headers)
+    page: Response = get_with_retry(link, headers)
+    
+    # Check if the request failed
+    if page is None:
+        print(f"Failed to fetch {link}")
+        return []
+    #endif
 
     soup = BeautifulSoup(page.text, "html.parser")
 

@@ -1,5 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Output
 universities.json
-modules.xml
-.idea/**
-WebScraping.iml
-workspace.xml
+
+# Backup files
+*.backup
+*.bak

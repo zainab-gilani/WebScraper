@@ -4,9 +4,10 @@ import re
 
 from bs4 import BeautifulSoup
 from requests import Response
-from models.Course import Course
-from models.EntryRequirement import EntryRequirement
-from scrape_search_results import *
+from .Course import Course
+from .EntryRequirement import EntryRequirement
+from scrape_search_results import get_links_to_crawl
+from network_helper import get_with_retry
 
 class University:
     def __init__(self):
@@ -36,7 +37,14 @@ class University:
 
         for link_to_crawl in all_result_pages_to_crawl:
             # The following is only to obtain the total number of pages to crawl
-            course_page: Response = requests.get(link_to_crawl, headers=headers)
+            course_page: Response = get_with_retry(link_to_crawl, headers)
+            
+            # Check if the request failed
+            if course_page is None:
+                print(f"Failed to fetch course page {link_to_crawl}, skipping...")
+                continue
+            #endif
+            
             course_soup = BeautifulSoup(course_page.text, "html.parser")
 
             # find all the centered elements
@@ -65,11 +73,30 @@ class University:
                     parts = [p.strip() for p in details.split("·")]
 
                     # Splits details into different parts
-                    course.course_type = parts[0]
-                    course.duration = parts[1]
-                    course.mode = parts[2]
-                    course.location = parts[3]
-                    course.start_date = parts[4]
+                    if len(parts) > 0:
+                        course.course_type = parts[0]
+                    else:
+                        course.course_type = ""
+                    
+                    if len(parts) > 1:
+                        course.duration = parts[1]
+                    else:
+                        course.duration = ""
+                    
+                    if len(parts) > 2:
+                        course.mode = parts[2]
+                    else:
+                        course.mode = ""
+                    
+                    if len(parts) > 3:
+                        course.location = parts[3]
+                    else:
+                        course.location = ""
+                    
+                    if len(parts) > 4:
+                        course.start_date = parts[4]
+                    else:
+                        course.start_date = ""
                 else:
                     course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
                 #endif
@@ -123,22 +150,18 @@ class University:
         #endfor
     # enddef
 
-    def to_json(self) -> dict:
-        """
-        :return: Creates and returns a JSON dictionary
-        """
-        courses_json: [dict] = []
+    def to_dict(self):
+        """Convert to dictionary"""
+        courses_list = []
         for course in self.courses:
-            courses_json.append(course.to_json())
-        #endfor
-
-        json = {
+            courses_list.append(course.to_dict())
+        
+        return {
             "name": self.name,
             "location": self.location,
             "link": self.link,
             "link_all_courses": self.link_all_courses,
-            "courses": courses_json
+            "courses": courses_list
         }
-        return json
     #enddef
 # endofor

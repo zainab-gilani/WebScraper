@@ -3,8 +3,8 @@ import re
 
 from bs4 import BeautifulSoup
 from requests import Response
-from models.EntryRequirement import EntryRequirement
-
+from .EntryRequirement import EntryRequirement
+from network_helper import get_with_retry
 
 class Course:
     """
@@ -34,20 +34,60 @@ class Course:
         Fetches requirements for the course from its page
         :param headers: browser headers
         """
-        requirement = EntryRequirement()
 
-        single_course_page: Response = requests.get(self.link, headers=headers)
+        single_course_page: Response = get_with_retry(self.link, headers)
+        
+        # Check if the request failed
+        if single_course_page is None:
+            print(f"Failed to fetch course page {self.link}")
+
+            # Can't get page so add empty requirement
+            empty_req = EntryRequirement()
+            empty_req.has_requirements = False
+            self.requirements.append(empty_req)
+            return
+        #endif
+        
         single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
-
-        grades_tag = single_course_soup.find("h2", class_="accordion__label")
-
-        if grades_tag and "A level" in grades_tag.text:
-            requirement.required_grade = grades_tag.text.strip()
+        
+        # Try multiple selectors for entry requirements
+        requirement_texts = []
+        
+        # Look for accordion labels (common on UCAS)
+        accordion_labels = single_course_soup.find_all("h2", class_="accordion__label")
+        for label in accordion_labels:
+            if any(qual in label.text for qual in ["A level", "UCAS", "BTEC"]):
+                requirement_texts.append(label.text.strip())
+        
+        # Look for requirement sections
+        req_sections = single_course_soup.find_all(class_=re.compile(r"requirement|entry|qualification", re.I))
+        for section in req_sections:
+            text = section.get_text(strip=True)
+            if text and len(text) < 500:  # Skip really long text
+                requirement_texts.append(text)
+            #endif
+        
+        # Parse all requirement texts and combine into one requirement
+        if requirement_texts:
+            # Combine all requirement texts into one string
+            combined_text = " | ".join(requirement_texts)
+            
+            try:
+                parsed_req = EntryRequirement.parse(combined_text)
+                self.requirements.append(parsed_req)
+            except Exception as e:
+                print(f"Error parsing requirements: {e}")
+                # Add empty requirement if parsing fails
+                empty_req = EntryRequirement()
+                empty_req.has_requirements = False
+                self.requirements.append(empty_req)
+            #endtry
         else:
-            requirement.required_grade = "N/A"
-        # endif
-
-        self.requirements.append(requirement)
+            # No requirements found - add empty requirement object
+            empty_req = EntryRequirement()
+            empty_req.has_requirements = False
+            self.requirements.append(empty_req)
+        #endif
     #endfor
 
         # # Extract all university content cards from page
@@ -63,18 +103,13 @@ class Course:
         #     # endif
     #enddef
 
-    def to_json(self) -> dict:
-        """
-        :return: Creates and returns a JSON dictionary
-        """
-
-        requirements_json: [dict] = []
-
+    def to_dict(self):
+        """Convert to dictionary"""
+        requirements_list = []
         for requirement in self.requirements:
-            requirements_json.append(requirement.to_json())
-        #endfor
-
-        json = {
+            requirements_list.append(requirement.to_dict())
+        
+        return {
             "name": self.name,
             "course_type": self.course_type,
             "duration": self.duration,
@@ -82,9 +117,7 @@ class Course:
             "location": self.location,
             "start_date": self.start_date,
             "link": self.link,
-            "requirements": requirements_json
+            "requirements": requirements_list
         }
-
-        return json
     # enddef
 # endclass

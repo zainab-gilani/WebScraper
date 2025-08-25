@@ -12,11 +12,20 @@ from scrape_search_results import *
 from models.University import University
 from models.Course import Course
 from models.EntryRequirement import EntryRequirement
+from network_helper import get_with_retry
 
-# To prevent us from scraping the entire website, we just want ONE uni that has requirements and one without
-# These flags get enabled when one match is found and then we stop looking for more
-FOUND_WITH_REQ = False
-FOUND_WITHOUT_REQ = False
+# Development settings: Limit scraping for testing
+# Collect sample data of different types for testing with Django
+
+# Maximum number of universities with course requirements to collect
+MAX_UNIS_WITH_REQ = 5
+
+# Maximum number of universities without requirements to collect (edge cases)
+MAX_UNIS_WITHOUT_REQ = 2
+
+# Counters for tracking what we've found
+count_with_req = 0
+count_without_req = 0
 
 # CONSIDERATIONS:
 # 1. Scraping might result in temporary network failures or blocks
@@ -44,11 +53,14 @@ headers = {
 all_result_pages_to_crawl: [str] = get_links_to_crawl("https://www.ucas.com/explore/search/providers?query=", headers)
 
 for link_to_crawl in all_result_pages_to_crawl:
-    # TODO: I need to a retry mechanism to retry if network fails to connect every 5 seconds until success
-    # Missing closing parenthesis here:
-
     # The following is only to obtain the total number of pages to crawl
-    page: Response = requests.get(link_to_crawl, headers=headers)
+    page: Response = get_with_retry(link_to_crawl, headers)
+    
+    # Check if the request failed
+    if page is None:
+        print(f"Failed to fetch {link_to_crawl} after multiple retries, skipping...")
+        continue
+    #endif
 
     soup = BeautifulSoup(page.text, "html.parser")
 
@@ -104,39 +116,61 @@ for link_to_crawl in all_result_pages_to_crawl:
         # 3.
         university.fetch_courses(headers)
 
+        # Check if this university has courses with requirements
+        uni_has_requirements = False
+        
         if len(university.courses) != 0:
             for course in university.courses:
-                if len(course.requirements) != 0:
-                    FOUND_WITH_REQ = True
-                else:
-                    FOUND_WITHOUT_REQ = True
+                # Check if course has real requirements
+                for req in course.requirements:
+                    if req.has_requirements and (req.min_ucas_points > 0 or req.display_grades):
+                        uni_has_requirements = True
+                        break
+                #endfor
+                if uni_has_requirements:
+                    break
                 #endif
             #endfor
-        else:
-            FOUND_WITHOUT_REQ = True
         #endif
-
-        # TEST: Decide if we should continue or stop
-
-        # # ALLOW ONLY ONE UNI TO BE FOUND AND PARSED
-        if FOUND_WITH_REQ and FOUND_WITHOUT_REQ:
+        
+        # Track what type of university we found and decide if we keep it
+        if uni_has_requirements:
+            if count_with_req < MAX_UNIS_WITH_REQ:
+                count_with_req += 1
+                all_universities.append(university)
+                print(f"Found university WITH requirements ({count_with_req}/{MAX_UNIS_WITH_REQ}): {university.name}")
+            #endif
+        else:
+            if count_without_req < MAX_UNIS_WITHOUT_REQ:
+                count_without_req += 1
+                all_universities.append(university)
+                print(f"Found university WITHOUT requirements ({count_without_req}/{MAX_UNIS_WITHOUT_REQ}): {university.name}")
+            #endif
+        #endif
+        
+        # Check if we have enough samples
+        if count_with_req >= MAX_UNIS_WITH_REQ and count_without_req >= MAX_UNIS_WITHOUT_REQ:
+            print(f"\nCollected enough samples: {count_with_req} with requirements, {count_without_req} without")
             break
-        # endif
-
-        all_universities.append(university)
+        #endif
     #endfor
 
-    # # ALLOW ONLY ONE PAGE TO BE FOUND AND PARSED
-    # break
-
-    if FOUND_WITH_REQ and FOUND_WITHOUT_REQ:
+    # Check if we have enough samples after each page
+    if count_with_req >= MAX_UNIS_WITH_REQ and count_without_req >= MAX_UNIS_WITHOUT_REQ:
+        print("Stopping - collected enough samples from all pages")
         break
     #endif
 #endfor
 
-# DEBUG
-
-print(f"Total unis found: {len(all_universities)}")
+# Summary of what was collected
+print("\n")
+print("========================================")
+print("SCRAPING SUMMARY")
+print("========================================")
+print(f"Universities with requirements: {count_with_req}/{MAX_UNIS_WITH_REQ}")
+print(f"Universities without requirements: {count_without_req}/{MAX_UNIS_WITHOUT_REQ}")
+print(f"Total universities collected: {len(all_universities)}")
+print("========================================")
 
 # Print all universities obtained
 for i, university in all_universities:
