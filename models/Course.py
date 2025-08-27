@@ -6,11 +6,13 @@ from requests import Response
 from .EntryRequirement import EntryRequirement
 from network_helper import get_with_retry
 
+
 class Course:
     """
     Represents a single course for a university
     and holds course details, such as the name, duration, requirements, etc.
     """
+
     def __init__(self):
         self.name = ""
         self.course_type = ""  # e.g. BSc (Hons)
@@ -27,6 +29,7 @@ class Course:
     def print(self):
         print(f"Course link: {self.link}")
         print(f"Entry requirements: {self.requirements}")
+
     # enddef
 
     def fetch_requirements(self, headers):
@@ -36,79 +39,71 @@ class Course:
         """
 
         single_course_page: Response = get_with_retry(self.link, headers)
-        
+
         # Check if the request failed
         if single_course_page is None:
             print(f"Failed to fetch course page {self.link}")
-
-            # Can't get page so add empty requirement
-            empty_req = EntryRequirement()
-            empty_req.has_requirements = False
-            self.requirements.append(empty_req)
+            # Don't add any requirements if we can't fetch the page
             return
-        #endif
-        
+        # endif
+
         single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
-        
+
         # Try multiple selectors for entry requirements
         requirement_texts = []
-        
+
         # Look for accordion labels (common on UCAS)
         accordion_labels = single_course_soup.find_all("h2", class_="accordion__label")
         for label in accordion_labels:
             if any(qual in label.text for qual in ["A level", "UCAS", "BTEC"]):
                 requirement_texts.append(label.text.strip())
-        
+
         # Look for requirement sections
         req_sections = single_course_soup.find_all(class_=re.compile(r"requirement|entry|qualification", re.I))
         for section in req_sections:
             text = section.get_text(strip=True)
             if text and len(text) < 500:  # Skip really long text
                 requirement_texts.append(text)
-            #endif
-        
+            # endif
+
         # Parse all requirement texts and combine into one requirement
         if requirement_texts:
             # Combine all requirement texts into one string
             combined_text = " | ".join(requirement_texts)
-            
+
             try:
                 parsed_req = EntryRequirement.parse(combined_text)
-                self.requirements.append(parsed_req)
+                # Only add if there are actual requirements
+                if parsed_req.has_requirements:
+                    self.requirements.append(parsed_req)
+                # endif
             except Exception as e:
                 print(f"Error parsing requirements: {e}")
-                # Add empty requirement if parsing fails
-                empty_req = EntryRequirement()
-                empty_req.has_requirements = False
-                self.requirements.append(empty_req)
-            #endtry
-        else:
-            # No requirements found - add empty requirement object
-            empty_req = EntryRequirement()
-            empty_req.has_requirements = False
-            self.requirements.append(empty_req)
-        #endif
-    #endfor
+                # Don't add any requirements if parsing fails
+            # endtry
+        # endif
 
-        # # Extract all university content cards from page
-        # for content_element in content_elements:
-        #     requirement = EntryRequirement()
-        #
-        #     # ucas points
-        #     points_tag = content_element.select_one("p.course-display__tariff")
-        #     if points_tag:
-        #         requirement.required_points = points_tag.text.strip()
-        #     else:
-        #         requirement.required_points = "N/A"
-        #     # endif
-    #enddef
+    # endfor
+
+    # # Extract all university content cards from page
+    # for content_element in content_elements:
+    #     requirement = EntryRequirement()
+    #
+    #     # ucas points
+    #     points_tag = content_element.select_one("p.course-display__tariff")
+    #     if points_tag:
+    #         requirement.required_points = points_tag.text.strip()
+    #     else:
+    #         requirement.required_points = "N/A"
+    #     # endif
+    # enddef
 
     def to_dict(self):
         """Convert to dictionary"""
         requirements_list = []
         for requirement in self.requirements:
             requirements_list.append(requirement.to_dict())
-        
+
         return {
             "name": self.name,
             "course_type": self.course_type,

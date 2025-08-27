@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import urllib.parse
 import requests
@@ -55,12 +55,12 @@ all_result_pages_to_crawl: [str] = get_links_to_crawl("https://www.ucas.com/expl
 for link_to_crawl in all_result_pages_to_crawl:
     # The following is only to obtain the total number of pages to crawl
     page: Response = get_with_retry(link_to_crawl, headers)
-    
+
     # Check if the request failed
     if page is None:
         print(f"Failed to fetch {link_to_crawl} after multiple retries, skipping...")
         continue
-    #endif
+    # endif
 
     soup = BeautifulSoup(page.text, "html.parser")
 
@@ -99,13 +99,13 @@ for link_to_crawl in all_result_pages_to_crawl:
             encoded_uni_name = urllib.parse.quote(university.name)
 
             university.link_all_courses = f"https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D={next_year}&refinementList%5Buniversity%5D%5B0%5D={encoded_uni_name}"
-        #endfor
+        # endfor
 
         # Extract Location Name
         loc_elements = content_element.select(".location-display__location")
         for loc_element in loc_elements:
             university.location = loc_element.text
-        #endfor
+        # endfor
 
         save_json(all_universities)
         print("SAVED")
@@ -118,7 +118,7 @@ for link_to_crawl in all_result_pages_to_crawl:
 
         # Check if this university has courses with requirements
         uni_has_requirements = False
-        
+
         if len(university.courses) != 0:
             for course in university.courses:
                 # Check if course has real requirements
@@ -126,41 +126,42 @@ for link_to_crawl in all_result_pages_to_crawl:
                     if req.has_requirements and (req.min_ucas_points > 0 or req.display_grades):
                         uni_has_requirements = True
                         break
-                #endfor
+                # endfor
                 if uni_has_requirements:
                     break
-                #endif
-            #endfor
-        #endif
-        
+                # endif
+            # endfor
+        # endif
+
         # Track what type of university we found and decide if we keep it
         if uni_has_requirements:
             if count_with_req < MAX_UNIS_WITH_REQ:
                 count_with_req += 1
                 all_universities.append(university)
                 print(f"Found university WITH requirements ({count_with_req}/{MAX_UNIS_WITH_REQ}): {university.name}")
-            #endif
+            # endif
         else:
             if count_without_req < MAX_UNIS_WITHOUT_REQ:
                 count_without_req += 1
                 all_universities.append(university)
-                print(f"Found university WITHOUT requirements ({count_without_req}/{MAX_UNIS_WITHOUT_REQ}): {university.name}")
-            #endif
-        #endif
-        
+                print(
+                    f"Found university WITHOUT requirements ({count_without_req}/{MAX_UNIS_WITHOUT_REQ}): {university.name}")
+            # endif
+        # endif
+
         # Check if we have enough samples
         if count_with_req >= MAX_UNIS_WITH_REQ and count_without_req >= MAX_UNIS_WITHOUT_REQ:
             print(f"\nCollected enough samples: {count_with_req} with requirements, {count_without_req} without")
             break
-        #endif
-    #endfor
+        # endif
+    # endfor
 
     # Check if we have enough samples after each page
     if count_with_req >= MAX_UNIS_WITH_REQ and count_without_req >= MAX_UNIS_WITHOUT_REQ:
         print("Stopping - collected enough samples from all pages")
         break
-    #endif
-#endfor
+    # endif
+# endfor
 
 # Summary of what was collected
 print("\n")
@@ -173,9 +174,9 @@ print(f"Total universities collected: {len(all_universities)}")
 print("========================================")
 
 # Print all universities obtained
-for i, university in all_universities:
+for university in all_universities:
     university.print()
-#endfor
+# endfor
 
 save_json(all_universities)
 print("saved")
