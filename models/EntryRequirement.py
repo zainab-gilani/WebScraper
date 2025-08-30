@@ -229,6 +229,10 @@ class EntryRequirement:
         # endif
 
         # Parse A-level requirements
+        # This regular expression is designed to find A-level grades in the text.
+        # - r'A\s*level\s*[-–]\s*' : It looks for "A level" (with any whitespace), followed by a hyphen.
+        # - ([A-Z*]{3,}) : It then looks for a group of at least 3 capital letters or asterisks (e.g., 'AAB', 'BCC'). This is the main grade.
+        # - (?:...)? : The last part is an optional group to catch ranges like 'BCC-BBB'.
         a_level_pattern = r'A\s*level\s*[-–]\s*([A-Z*]{3,}(?:\s*[-–]\s*[A-Z*]{3,})?)'
         a_level_match = re.search(a_level_pattern, text, re.IGNORECASE)
         if a_level_match:
@@ -249,28 +253,132 @@ class EntryRequirement:
                 req.min_ucas_points = req.calculate_a_level_points(grades)
                 req.min_grade_required = req.find_lowest_grade(grades)
 
-            # Check for subject requirements
-            subject_pattern = r'including\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+at\s+grade\s+([A-Z*])'
-            subject_matches = re.findall(subject_pattern, text, re.IGNORECASE)
-            for match in subject_matches:
-                subject = match[0].strip()
-                grade = match[1].strip()
-                req.add_subject_requirement(subject, grade)
-            # endfor
-
-            # If no specific grade mentioned, check for just "including [subject]"
-            if len(subject_matches) == 0:
-                including_pattern = r'including\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)'
-                including_match = re.search(including_pattern, text, re.IGNORECASE)
-                if including_match:
-                    subject = including_match.group(1).strip()
-                    req.add_subject_requirement(subject, "A")  # Default to A
-                # endif
-            # endif
+            # Debug: Uncomment line below to see what text is being analyzed
+            # print(f"Analyzing requirement text: {text[:200]}...")
+            
+            # Check for subject requirements - multiple patterns needed
+            
+            # Pattern 1: "including Chemistry and Mathematics" (Newcastle style)  
+            # Look for text containing "including" followed by subject names
+            if "including" in text.lower():
+                # Find the part after "including"
+                including_pos = text.lower().find("including")
+                after_including = text[including_pos + 9:].strip()  # 9 = len("including")
+                
+                # print(f"Found 'including' text: {after_including[:100]}")
+                
+                # Look for subject names before any punctuation or "at grade"
+                # Split at common terminators
+                terminators = [" at grade", ".", ",", ")", "(", " Further Mathematics is"]
+                subjects_text = after_including
+                for term in terminators:
+                    if term in subjects_text:
+                        subjects_text = subjects_text.split(term)[0]
+                        break
+                    #endif
+                #endfor
+                
+                # print(f"Extracted subjects text: {subjects_text}")
+                
+                # Split subjects on "and" and "or" 
+                subject_parts = []
+                
+                # Replace "and" and "or" with a separator
+                subjects_text = subjects_text.replace(" and ", "|")
+                subjects_text = subjects_text.replace(" or ", "|")
+                
+                # Split on the separator
+                for part in subjects_text.split("|"):
+                    clean_part = part.strip()
+                    if clean_part and len(clean_part) < 50:
+                        subject_parts.append(clean_part)
+                    #endif
+                #endfor
+                
+                # Add each subject with the minimum required grade
+                for subject in subject_parts:
+                    req.add_subject_requirement(subject, req.min_grade_required)
+                    # print(f"Added subject requirement: {subject} at grade {req.min_grade_required}")
+                #endfor
+            #endif
+            
+            # Pattern 2: "A* in Mathematics A*/A in Physics" (Imperial style)
+            # Look for patterns like "A* in Mathematics" or "A*/A in Physics"
+            if " in " in text:
+                # Split text into lines to process each requirement line
+                lines = text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    
+                    # Skip empty lines or lines without grade info
+                    if not line or " in " not in line:
+                        continue
+                    #endif
+                    
+                    # Look for grade followed by "in" followed by subject
+                    words = line.split()
+                    for i in range(len(words) - 2):
+                        current_word = words[i]
+                        next_word = words[i + 1]
+                        
+                        # Check if current word is a grade and next word is "in"
+                        is_grade = False
+                        grade_chars = ["A", "B", "C", "D", "E", "*", "/"]
+                        for char in current_word:
+                            if char in grade_chars:
+                                is_grade = True
+                                break
+                            #endif
+                        #endfor
+                        
+                        if is_grade and next_word.lower() == "in":
+                            # Found "grade in" pattern, extract subject name
+                            grade = current_word
+                            
+                            # Get subject name (rest of the line or until parentheses/punctuation)
+                            subject_words = []
+                            for j in range(i + 2, len(words)):
+                                word = words[j]
+                                
+                                # Stop at punctuation or new grade patterns
+                                if word.startswith("(") or word.startswith("[") or "." in word:
+                                    break
+                                #endif
+                                
+                                # Stop if we hit another grade
+                                is_new_grade = False
+                                for char in word:
+                                    if char in grade_chars and word != "A-levels":
+                                        is_new_grade = True
+                                        break
+                                    #endif
+                                #endfor
+                                
+                                if is_new_grade:
+                                    break
+                                #endif
+                                
+                                subject_words.append(word)
+                            #endfor
+                            
+                            if subject_words:
+                                subject = " ".join(subject_words)
+                                req.add_subject_requirement(subject, grade)
+                                # print(f"Added subject requirement: {subject} at grade {grade}")
+                            #endif
+                        #endif
+                    #endfor
+                #endfor
+            #endif
         # endif
 
         # Parse UCAS Tariff Points
         # Handle "UCAS Tariff - 112 - 128 points" or "UCAS Tariff - 72 points"
+        # This regex finds UCAS tariff points.
+        # - r'UCAS\s+Tariff\s*[-–]\s*' : Looks for "UCAS Tariff" followed by a hyphen.
+        # - (\d+) : Finds the first number (the minimum points).
+        # - (?:\s*[-–]\s*(\d+))? : Looks for an optional second number for ranges (e.g., "112 - 128").
+        # - \s*points? : Allows for the word "points" at the end.
         ucas_pattern = r'UCAS\s+Tariff\s*[-–]\s*(\d+)(?:\s*[-–]\s*(\d+))?\s*points?'
         ucas_match = re.search(ucas_pattern, text, re.IGNORECASE)
         if ucas_match:

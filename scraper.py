@@ -15,7 +15,7 @@ from models.EntryRequirement import EntryRequirement
 from network_helper import get_with_retry
 
 # Development settings: Limit scraping for testing
-# Collect sample data of different types for testing with Django
+# These help me test the scraper without downloading everything - saves time during development
 
 # Maximum number of universities with course requirements to collect
 MAX_UNIS_WITH_REQ = 5
@@ -31,7 +31,7 @@ count_without_req = 0
 # 1. Scraping might result in temporary network failures or blocks
 # 2.
 
-# All universities
+# All universities - this list will store every University object I create
 all_universities: [University] = []
 
 # Scraping logic...
@@ -40,8 +40,9 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
 }
 
-# TODO: I need to a retry mechanism to retry if network fails to connect every 5 seconds until success
-# Missing closing parenthesis here:
+# NOTE: I originally planned to add a retry system for network failures, but I ended up
+# implementing this in the 'network_helper.py' file with the 'get_with_retry' function.
+# This handles cases where the connection might fail temporarily.
 
 # https://www.ucas.com/explore/unis/6cadf6e5/the-university-of-law
 # link = https://www.ucas.com/explore/unis + code + university name + /courses?studyLevel=undergraduate&studyYear=2026
@@ -53,7 +54,8 @@ headers = {
 all_result_pages_to_crawl: [str] = get_links_to_crawl("https://www.ucas.com/explore/search/providers?query=", headers)
 
 for link_to_crawl in all_result_pages_to_crawl:
-    # The following is only to obtain the total number of pages to crawl
+    # Now I'll loop through each of the results pages I found earlier.
+    # This request gets the HTML for one page of university listings.
     page: Response = get_with_retry(link_to_crawl, headers)
 
     # Check if the request failed
@@ -83,15 +85,10 @@ for link_to_crawl in all_result_pages_to_crawl:
             # Uni Name
             university.name = link_element.text
 
-            # Show all universities to find Newcastle
-            print(f"University found: {university.name}")
-            
-            # Only process if it contains Newcastle
-            if "Newcastle" not in university.name:
-                continue
-            #endif
-
-            print(f"Found Newcastle university: {university.name} - processing...")
+            # # Used for testing the parser on a specific university
+            # if university.name != "Newcastle University":
+            #     continue
+            # #endif
 
             # Uni Web Link
             university.link = link_element.get("href")
@@ -114,10 +111,10 @@ for link_to_crawl in all_result_pages_to_crawl:
             break
         #endfor
         
-        # Skip if not Newcastle-related university
-        if "Newcastle" not in university.name:
-            continue
-        #endif
+        # # Skip if not Newcastle University (for testing)
+        # if university.name != "Newcastle University":
+        #     continue
+        # #endif
 
         # Extract Location Name
         loc_elements = content_element.select(".location-display__location")
@@ -162,8 +159,7 @@ for link_to_crawl in all_result_pages_to_crawl:
             if count_without_req < MAX_UNIS_WITHOUT_REQ:
                 count_without_req += 1
                 all_universities.append(university)
-                print(
-                    f"Found university WITHOUT requirements ({count_without_req}/{MAX_UNIS_WITHOUT_REQ}): {university.name}")
+                print(f"Found university WITHOUT requirements ({count_without_req}/{MAX_UNIS_WITHOUT_REQ}): {university.name}")
             # endif
         # endif
 
@@ -179,7 +175,7 @@ for link_to_crawl in all_result_pages_to_crawl:
         print("Stopping - collected enough samples from all pages")
         break
     # endif
-# endfor
+#endfor
 
 # Summary of what was collected
 print("\n")

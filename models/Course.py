@@ -9,8 +9,9 @@ from network_helper import get_with_retry
 
 class Course:
     """
-    Represents a single course for a university
-    and holds course details, such as the name, duration, requirements, etc.
+    I made this class to store all the information about a single university course.
+    Each time I find a course on the website, I create one of these Course objects
+    to hold details like its name, length, and what grades you need to get in.
     """
 
     def __init__(self):
@@ -34,8 +35,10 @@ class Course:
 
     def fetch_requirements(self, headers):
         """
-        Fetches requirements for the course from its page
-        :param headers: browser headers
+        This function visits the specific webpage for this course to get the entry requirements.
+        Every university website is laid out differently, so I've added code to check for a few
+        common HTML structures they use, like 'options-bar' divs or tables. This was one of
+        the trickiest parts because the websites weren't consistent.
         """
 
         single_course_page: Response = get_with_retry(self.link, headers)
@@ -128,7 +131,7 @@ class Course:
         # Try multiple selectors for entry requirements
         requirement_texts = []
 
-        # Look for accordion labels (common on UCAS)
+        # Look for accordion labels AND their detailed content (common on UCAS)
         accordion_labels = single_course_soup.find_all("h2", class_="accordion__label")
         for label in accordion_labels:
             # Check if any of the qualifications are in the label text
@@ -140,7 +143,23 @@ class Course:
                 #endif
             #endfor
             if found_qual:
+                # Add the label text
                 requirement_texts.append(label.text.strip())
+                
+                # Also try to get the detailed content from the accordion
+                # Find the parent accordion item
+                accordion_item = label.find_parent("li", class_="accordion__child")
+                if accordion_item:
+                    # Look for the accordion content div
+                    content_div = accordion_item.find("div", class_="accordion__inner-wrapper")
+                    if content_div:
+                        detailed_text = content_div.get_text(strip=True)
+                        if detailed_text and len(detailed_text) < 1000:  # Reasonable length
+                            requirement_texts.append(detailed_text)
+                            # print(f"Found detailed accordion content: {detailed_text[:150]}...")
+                        #endif
+                    #endif
+                #endif
             #endif
         #endfor
 
