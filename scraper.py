@@ -68,7 +68,7 @@ for link_to_crawl in all_result_pages_to_crawl:
     # on the page
     content_elements = soup.find_all("div", class_="content__details")
 
-    print(f"Found {len(content_elements)} universities...")
+    # print(f"Found {len(content_elements)} universities...")
 
     # Grab all university content cards from page
     for content_element in content_elements:
@@ -82,6 +82,12 @@ for link_to_crawl in all_result_pages_to_crawl:
         for link_element in link_elements:
             # Uni Name
             university.name = link_element.text
+
+            # if university.name != "ACM (The Academy of Contemporary Music)":
+            #     print(f"Testing mode - skipping {university.name}")
+            #     skip_uni = True
+            #     break
+            # endif
 
             # Uni Web Link
             university.link = link_element.get("href")
@@ -99,7 +105,7 @@ for link_to_crawl in all_result_pages_to_crawl:
             encoded_uni_name = urllib.parse.quote(university.name)
 
             university.link_all_courses = f"https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D={next_year}&refinementList%5Buniversity%5D%5B0%5D={encoded_uni_name}"
-        # endfor
+        #endfor
 
         # Extract Location Name
         loc_elements = content_element.select(".location-display__location")

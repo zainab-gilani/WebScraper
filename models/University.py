@@ -51,7 +51,7 @@ class University:
             # on the page
             content_elements = course_soup.find_all("div", class_="content__details")
 
-            print(f"Found {len(content_elements)} courses...")
+            # print(f"Found {len(content_elements)} courses...")
 
             for content_element in content_elements:
                 course = Course()
@@ -68,85 +68,161 @@ class University:
                     course.link = link_tag.get("href")
                 #endif
 
-                # details
+                # Check if this course has multiple options
+                # If details contain "Options" it means there are multiple course variants
                 details_tag = content_element.select_one("p.course-display__details")
                 if details_tag:
                     details = details_tag.get_text(strip=True)
-                    # Split details and strip whitespace from each part
-                    parts = []
-                    for p in details.split("·"):
-                        stripped_part = p.strip()
-                        parts.append(stripped_part)
-                    # endfor
-
-                    # Splits details into different parts
-                    if len(parts) > 0:
-                        course.course_type = parts[0]
-                    else:
+                    
+                    # Check if this is a summary (contains "Options")
+                    if "Options" in details or "Option" in details:
+                        # This course has multiple options - details will be fetched from the course page
+                        # Set temporary placeholder values
                         course.course_type = ""
-                    #endif
-                    
-                    if len(parts) > 1:
-                        course.duration = parts[1]
-                    else:
                         course.duration = ""
-                    # endif
-                    
-                    if len(parts) > 2:
-                        course.mode = parts[2]
-                    else:
                         course.mode = ""
-                    # endif
-                    
-                    if len(parts) > 3:
-                        course.location = parts[3]
-                    else:
                         course.location = ""
-                    # endif
-                    
-                    if len(parts) > 4:
-                        course.start_date = parts[4]
-                    else:
                         course.start_date = ""
-                    # endif
+                    else:
+                        # This is a single course option, parse the details normally
+                        # Split details and strip whitespace from each part
+                        parts = []
+                        for p in details.split("·"):
+                            stripped_part = p.strip()
+                            parts.append(stripped_part)
+                        #endfor
+
+                        # Parse the parts - the order can vary, so we need to be smart about it
+                        # Typical patterns:
+                        # - BA (Hons) · 3 years · Full-time · Location · September 2026
+                        # - BA (Hons) · 2 Years · Full-time (intensive) · 2026
+                        
+                        # Initialize all fields
+                        course.course_type = ""
+                        course.duration = ""
+                        course.mode = ""
+                        course.location = ""
+                        course.start_date = ""
+                        
+                        for part in parts:
+                            # Check if it's a qualification (contains BA, BSc, MSc, etc.)
+                            is_qualification = False
+                            qualification_types = ["BA", "BSc", "MSc", "MA", "BEng", "MEng", "PgDip", "PhD", "MPhil", "LLB", "MBA"]
+                            for qual in qualification_types:
+                                if qual in part:
+                                    is_qualification = True
+                                    break
+                                #endif
+                            #endfor
+                            
+                            if is_qualification:
+                                course.course_type = part
+                            else:
+                                # Check if it's duration (contains year/years/months)
+                                is_duration = False
+                                duration_words = ["year", "month"]
+                                for dur in duration_words:
+                                    if dur in part.lower():
+                                        is_duration = True
+                                        break
+                                    #endif
+                                #endfor
+                                
+                                if is_duration:
+                                    course.duration = part
+                                else:
+                                    # Check if it's mode (contains time/distance/online)
+                                    is_mode = False
+                                    mode_words = ["full-time", "part-time", "distance", "online", "intensive", "flexible"]
+                                    for mode in mode_words:
+                                        if mode in part.lower():
+                                            is_mode = True
+                                            break
+                                        #endif
+                                    #endfor
+                                    
+                                    if is_mode:
+                                        course.mode = part
+                                    else:
+                                        # Check if it's just a year (4 digits)
+                                        if part.isdigit() and len(part) == 4:
+                                            course.start_date = part
+                                        else:
+                                            # Check if it's a month+year start date
+                                            is_start_date = False
+                                            month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                                            for month in month_names:
+                                                if month in part:
+                                                    is_start_date = True
+                                                    break
+                                                #endif
+                                            #endfor
+                                            
+                                            if is_start_date:
+                                                course.start_date = part
+                                            else:
+                                                # Otherwise it might be location
+                                                # If we haven't set location yet and this doesn't look like other fields
+                                                if not course.location and part:
+                                                    course.location = part
+                                                #endif
+                                            #endif
+                                        #endif
+                                    #endif
+                                #endif
+                            #endif
+                        #endfor
+                    #endif
                 else:
-                    course.qualification = course.duration = course.mode = course.location = course.start_date = "N/A"
+                    course.course_type = ""
+                    course.duration = ""
+                    course.mode = ""
+                    course.location = ""
+                    course.start_date = ""
                 #endif
 
-                # ucas points
+                # Try to get UCAS points from search results page
                 points_tag = content_element.select_one("p.course-display__tariff")
-                requirement = EntryRequirement()
-                requirement.required_points_min = -1
-                requirement.required_points_max = -1
-
+                
+                # Only create a requirement if we find actual data
                 if points_tag:
                     required_points = points_tag.text.strip()
-
-                    try:
-                        # Uses RegEx to scrape just the amount of points, not the entire text
-                        match = re.search(r"(\d+)\s*-\s*(\d+)", required_points)
-                        if match:
-                            requirement.required_points_min = int(match.group(1))
-                            requirement.required_points_max = int(match.group(2))
-                        else:
-                            match = re.search(r"(\d+)", required_points)
-                            if match:
-                                num = int(match.group(1))
-                                requirement.required_points_min = num
-                            else:
-                                requirement.required_points_min = -1
-                                requirement.required_points_max = -1
-                            #endif
-                        #endif
-                    except:
+                    
+                    # Check if this contains actual points data (not just "N/A" etc)
+                    if "N/A" not in required_points and required_points:
+                        requirement = EntryRequirement()
                         requirement.required_points_min = -1
                         requirement.required_points_max = -1
-                    #endtry
-                else:
-                    pass
-                #endif
 
-                course.requirements.append(requirement)
+                        try:
+                            # Uses RegEx to scrape just the amount of points, not the entire text
+                            match = re.search(r"(\d+)\s*-\s*(\d+)", required_points)
+                            if match:
+                                requirement.required_points_min = int(match.group(1))
+                                requirement.required_points_max = int(match.group(2))
+                                requirement.has_requirements = True
+                            else:
+                                match = re.search(r"(\d+)", required_points)
+                                if match:
+                                    num = int(match.group(1))
+                                    requirement.required_points_min = num
+                                    requirement.has_requirements = True
+                                #endif
+                            #endif
+                            
+                            # Only add if we found actual points
+                            if requirement.has_requirements:
+                                course.requirements.append(requirement)
+                            #endif
+                        except ValueError:
+                            # Don't add anything if number conversion fails
+                            pass
+                        except Exception as error:
+                            # Don't add anything if other parsing fails
+                            pass
+                        #endtry
+                    #endif
+                #endif
 
                 self.courses.append(course)
 
