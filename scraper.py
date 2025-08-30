@@ -83,11 +83,15 @@ for link_to_crawl in all_result_pages_to_crawl:
             # Uni Name
             university.name = link_element.text
 
-            # if university.name != "ACM (The Academy of Contemporary Music)":
-            #     print(f"Testing mode - skipping {university.name}")
-            #     skip_uni = True
-            #     break
-            # endif
+            # Show all universities to find Newcastle
+            print(f"University found: {university.name}")
+            
+            # Only process if it contains Newcastle
+            if "Newcastle" not in university.name:
+                continue
+            #endif
+
+            print(f"Found Newcastle university: {university.name} - processing...")
 
             # Uni Web Link
             university.link = link_element.get("href")
@@ -105,7 +109,15 @@ for link_to_crawl in all_result_pages_to_crawl:
             encoded_uni_name = urllib.parse.quote(university.name)
 
             university.link_all_courses = f"https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D={next_year}&refinementList%5Buniversity%5D%5B0%5D={encoded_uni_name}"
+            
+            # Process this university
+            break
         #endfor
+        
+        # Skip if not Newcastle-related university
+        if "Newcastle" not in university.name:
+            continue
+        #endif
 
         # Extract Location Name
         loc_elements = content_element.select(".location-display__location")

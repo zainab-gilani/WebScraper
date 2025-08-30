@@ -1,4 +1,5 @@
 import requests
+import re
 from bs4 import BeautifulSoup
 from requests import Response
 from network_helper import get_with_retry
@@ -28,7 +29,7 @@ def get_links_to_crawl(link, headers):
     # 2. Get total page count of search results
 
     page_results = soup.find_all("ul", class_="pagination__list")
-
+    
     total_pages = 0
     for page_result in page_results:
         result_items = page_result.find_all("li", class_="pagination__item")
@@ -40,8 +41,12 @@ def get_links_to_crawl(link, headers):
                 if item.has_attr("aria-label"):
                     page_label = item.attrs["aria-label"]
 
-                    if "last page" in page_label:
-                        total_pages = int(item.text)
+                    if "last page" in page_label.lower():
+                        # Extract page number from the aria-label "Last Page, Page 21"
+                        page_match = re.search(r"page\s+(\d+)", page_label.lower())
+                        if page_match:
+                            total_pages = int(page_match.group(1))
+                        #endif
                     #endif
                 #endif
             #endfor
