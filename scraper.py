@@ -18,10 +18,10 @@ from network_helper import get_with_retry
 # These help me test the scraper without downloading everything - saves time during development
 
 # Maximum number of universities with course requirements to collect
-MAX_UNIS_WITH_REQ = 5
+MAX_UNIS_WITH_REQ = 20
 
 # Maximum number of universities without requirements to collect (edge cases)
-MAX_UNIS_WITHOUT_REQ = 2
+MAX_UNIS_WITHOUT_REQ = 5
 
 # Counters for tracking what we've found
 count_with_req = 0
