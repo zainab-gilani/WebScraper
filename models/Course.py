@@ -55,8 +55,17 @@ class Course:
         # Look for accordion labels (common on UCAS)
         accordion_labels = single_course_soup.find_all("h2", class_="accordion__label")
         for label in accordion_labels:
-            if any(qual in label.text for qual in ["A level", "UCAS", "BTEC"]):
+            # Check if any of the qualifications are in the label text
+            found_qual = False
+            for qual in ["A level", "UCAS", "BTEC"]:
+                if qual in label.text:
+                    found_qual = True
+                    break
+                # endif
+            # endfor
+            if found_qual:
                 requirement_texts.append(label.text.strip())
+            # endif
 
         # Look for requirement sections
         req_sections = single_course_soup.find_all(class_=re.compile(r"requirement|entry|qualification", re.I))
@@ -102,9 +111,11 @@ class Course:
         """Convert to dictionary"""
         requirements_list = []
         for requirement in self.requirements:
-            requirements_list.append(requirement.to_dict())
+            requirement_dict = requirement.to_dict()
+            requirements_list.append(requirement_dict)
+        # endfor
 
-        return {
+        result = {
             "name": self.name,
             "course_type": self.course_type,
             "duration": self.duration,
@@ -114,5 +125,6 @@ class Course:
             "link": self.link,
             "requirements": requirements_list
         }
+        return result
     # enddef
 # endclass

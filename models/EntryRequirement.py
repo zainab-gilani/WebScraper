@@ -84,9 +84,11 @@ class EntryRequirement:
         """Convert to dictionary"""
         subject_reqs = []
         for req in self.subject_requirements:
-            subject_reqs.append(req.to_dict())
+            req_dict = req.to_dict()
+            subject_reqs.append(req_dict)
+        # endfor
 
-        return {
+        result = {
             "min_ucas_points": self.min_ucas_points,
             "min_grade_required": self.min_grade_required,
             "subject_requirements": subject_reqs,
@@ -95,6 +97,7 @@ class EntryRequirement:
             "accepts_ucas": self.accepts_ucas,
             "has_requirements": self.has_requirements
         }
+        return result
 
     # enddef
 
