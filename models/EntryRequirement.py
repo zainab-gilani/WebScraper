@@ -202,6 +202,39 @@ class EntryRequirement:
     # enddef
 
     @staticmethod
+    def clean_requirement_text(text: str) -> str:
+        """Clean and normalize requirement text"""
+        if not text:
+            return ""
+        # endif
+        
+        # Remove extra whitespace
+        text = " ".join(text.split())
+        
+        # Handle common truncation issues
+        text_lower = text.lower()
+        
+        # If we just have "not" by itself, it probably means "not accepted"
+        if text_lower.strip() == "not":
+            return "Not accepted"
+        # endif
+        
+        # If we have partial phrases, complete them
+        if text_lower.strip() in ["n/a", "na", "not available"]:
+            return "Requirements not specified"
+        # endif
+        
+        # Handle UCAS-specific cases
+        if "ucas" in text_lower and "not" in text_lower:
+            if "not accepted" not in text_lower:
+                return text + " - Not accepted"
+            # endif
+        # endif
+        
+        return text
+    # enddef
+
+    @staticmethod
     def parse(requirement_text: str) -> 'EntryRequirement':
         """
         Parse entry requirement text from UCAS and create an EntryRequirement object
@@ -219,14 +252,29 @@ class EntryRequirement:
             return req
         # endif
 
-        text = requirement_text.strip()
+        # Clean the text first
+        text = EntryRequirement.clean_requirement_text(requirement_text)
 
-        # Check for no requirements
+        # Check for no requirements or not accepted
         text_lower = text.lower()
-        if "no formal" in text_lower or "no specific" in text_lower or "no requirement" in text_lower:
-            req.has_requirements = False
-            return req
-        # endif
+        no_req_phrases = [
+            "no formal", "no specific", "no requirement", "requirements not specified",
+            "not accepted", "ucas not accepted", "not available",
+            # Handle partial text issues
+            "not", "n/a"
+        ]
+        
+        for phrase in no_req_phrases:
+            if phrase in text_lower:
+                req.has_requirements = False
+                # Set a cleaner display message
+                if phrase in ["not", "not accepted", "ucas not accepted"]:
+                    req.display_grades = "Not accepted"
+                else:
+                    req.display_grades = "Requirements not specified"
+                return req
+            # endif
+        # endfor
 
         # Parse A-level requirements
         # This regular expression is designed to find A-level grades in the text.
