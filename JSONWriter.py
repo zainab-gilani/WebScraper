@@ -4,7 +4,10 @@ from models.Course import *
 
 def save_json(universities: [University]):
     """
-    Saves universities as JSON file
+    Saves universities as JSON file.
+
+    :param universities: List of University objects to save
+    :return: None
     """
 
     university_json: [dict] = []

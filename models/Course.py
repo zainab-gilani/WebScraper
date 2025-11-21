@@ -15,6 +15,11 @@ class Course:
     """
 
     def __init__(self):
+        """
+        Initializes a Course object to store information about a single university course.
+
+        :return: None
+        """
         self.name = ""
         self.course_type = ""  # e.g. BSc (Hons)
         self.duration = ""
@@ -28,6 +33,11 @@ class Course:
     # enddef
 
     def print(self):
+        """
+        Prints the course link and entry requirements to the console.
+
+        :return: None
+        """
         print(f"Course link: {self.link}")
         print(f"Entry requirements: {self.requirements}")
 
@@ -35,10 +45,11 @@ class Course:
 
     def fetch_requirements(self, headers):
         """
-        This function visits the specific webpage for this course to get the entry requirements.
-        Every university website is laid out differently, so I've added code to check for a few
-        common HTML structures they use, like 'options-bar' divs or tables. This was one of
-        the trickiest parts because the websites weren't consistent.
+        Visits the specific webpage for this course to get the entry requirements.
+        Checks for different HTML structures like 'options-bar' divs or tables.
+
+        :param headers: Request headers dictionary for HTTP requests
+        :return: None
         """
 
         single_course_page: Response = get_with_retry(self.link, headers)
@@ -212,7 +223,11 @@ class Course:
     #enddef
     
     def clean_up_requirements(self):
-        """Remove empty requirements if we have real ones"""
+        """
+        Removes empty requirements if we have real ones.
+
+        :return: None
+        """
         if not self.requirements:
             return
         #endif
@@ -252,7 +267,11 @@ class Course:
     # enddef
 
     def to_dict(self):
-        """Convert to dictionary"""
+        """
+        Converts the Course object to a dictionary representation.
+
+        :return: Dictionary containing all course information
+        """
         requirements_list = []
         for requirement in self.requirements:
             requirement_dict = requirement.to_dict()

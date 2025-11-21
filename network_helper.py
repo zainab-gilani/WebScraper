@@ -4,12 +4,12 @@ from requests import Response
 
 def get_with_retry(url, headers, max_retries=3, wait_time=10):
     """
-    Makes a GET request with retry logic for network failures
-    
+    Makes a GET request with retry logic for network failures.
+
     :param url: The URL to fetch
-    :param headers: Request headers
-    :param max_retries: Maximum number of retry attempts
-    :param wait_time: Seconds to wait between retries
+    :param headers: Request headers dictionary
+    :param max_retries: Maximum number of retry attempts (default 3)
+    :param wait_time: Seconds to wait between retries (default 10)
     :return: Response object if successful, None if all retries fail
     """
 

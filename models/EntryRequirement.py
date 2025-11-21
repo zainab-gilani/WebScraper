@@ -34,10 +34,11 @@ class SubjectRequirement:
 
     def __init__(self, subject: str, grade: str):
         """
-        Create a new subject requirement.
+        Creates a new subject requirement.
 
         :param subject: The name of the subject (e.g., "Mathematics", "Physics")
         :param grade: The grade needed for this subject (e.g., "A", "B", "A*")
+        :return: None
         """
         self.subject: str = subject
         self.grade: str = grade
@@ -46,10 +47,9 @@ class SubjectRequirement:
 
     def to_dict(self) -> dict:
         """
-        Convert this subject requirement into a dictionary.
-        This makes it easy to save to a database or convert to JSON.
+        Converts this subject requirement into a dictionary.
 
-        :return: A dictionary with 'subject' and 'grade' keys
+        :return: Dictionary with 'subject' and 'grade' keys
         """
         return {"subject": self.subject, "grade": self.grade}
     # enddef
@@ -65,7 +65,9 @@ class EntryRequirement:
 
     def __init__(self):
         """
-        Create a new entry requirement object with default values.
+        Creates a new entry requirement object with default values.
+
+        :return: None
         """
         # The minimum UCAS points needed to apply (used for filtering in database)
         self.min_ucas_points: int = 0
@@ -92,11 +94,12 @@ class EntryRequirement:
 
     def add_subject_requirement(self, subject: str, grade: str) -> None:
         """
-        Add a requirement for a specific subject to this course.
-        If the subject already exists, it updates the grade instead of adding a duplicate.
+        Adds a requirement for a specific subject to this course.
+        If the subject already exists, updates the grade instead of adding a duplicate.
 
         :param subject: The name of the subject (e.g., "Mathematics")
         :param grade: The grade required (e.g., "A", "B")
+        :return: None
         """
         # Check if we already have a requirement for this subject
         for req in self.subject_requirements:
@@ -112,10 +115,9 @@ class EntryRequirement:
 
     def to_dict(self):
         """
-        Convert this entry requirement into a dictionary.
-        This is useful for saving to a database or exporting as JSON.
+        Converts this entry requirement into a dictionary.
 
-        :return: A dictionary containing all the requirement information
+        :return: Dictionary containing all the requirement information
         """
         # Convert each subject requirement to a dictionary
         subject_reqs = []
@@ -140,10 +142,10 @@ class EntryRequirement:
 
     def calculate_a_level_points(self, grades: str) -> int:
         """
-        Calculate UCAS points from A-level grades.
+        Calculates UCAS points from A-level grades.
 
         :param grades: A string of A-level grades (e.g., "AAB", "A*AA", "BCC")
-        :return: The total UCAS points for these grades
+        :return: Total UCAS points for these grades
         """
         if not grades:
             return 0
@@ -171,8 +173,7 @@ class EntryRequirement:
 
     def find_lowest_grade(self, grades: str) -> str:
         """
-        Find the lowest grade in a set of A-level grades.
-        For example, in "AAB", the lowest grade is "B".
+        Finds the lowest grade in a set of A-level grades.
 
         :param grades: A string of A-level grades (e.g., "AAB", "BCC")
         :return: The lowest grade found (e.g., "B", "C")
@@ -213,11 +214,10 @@ class EntryRequirement:
     @staticmethod
     def calculate_btec_points(grades: str) -> int:
         """
-        Calculate BTEC points from grade string.
-        For example: "DDD" = 144 points, "DMM" = 112 points, "D*D*D*" = 168 points.
+        Calculates BTEC points from grade string.
 
         :param grades: A string of BTEC grades (e.g., "DDD", "DMM", "D*D*D*")
-        :return: The total UCAS points for these BTEC grades
+        :return: Total UCAS points for these BTEC grades
         """
         if not grades:
             return 0
@@ -251,8 +251,7 @@ class EntryRequirement:
     @staticmethod
     def clean_requirement_text(text: str) -> str:
         """
-        Clean up and fix common issues in requirement text from UCAS.
-        Sometimes the text is cut off or has formatting problems.
+        Cleans up and fixes common issues in requirement text from UCAS.
 
         :param text: The raw requirement text from the website
         :return: Cleaned and properly formatted text
@@ -291,18 +290,11 @@ class EntryRequirement:
     @staticmethod
     def parse(requirement_text: str) -> 'EntryRequirement':
         """
-        Take requirement text from UCAS and convert it into an EntryRequirement object.
-        This is the main function that reads text like "A level - AAB" and figures out
-        what grades are needed, what subjects are required, and how many UCAS points it's worth.
-
-        Examples of text it can handle:
-        - "A level - AAB" → Needs AAB grades (136 UCAS points)
-        - "A level - BCC - BBB" → Needs between BCC and BBB (112-120 points)
-        - "UCAS Tariff - 120 points" → Needs 120 UCAS points
-        - "A level - AAB including Mathematics at grade A" → Needs AAB with Maths at A
+        Takes requirement text from UCAS and converts it into an EntryRequirement object.
+        Parses A-level grades, UCAS tariff points, BTEC grades, and subject requirements.
 
         :param requirement_text: The raw text from the UCAS website
-        :return: An EntryRequirement object with all the parsed information
+        :return: EntryRequirement object with all the parsed information
         """
         req = EntryRequirement()
 

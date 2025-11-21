@@ -6,10 +6,13 @@ from network_helper import get_with_retry
 
 def get_links_to_crawl(link, headers):
     """
-    1. Visits search link
-    2. Counts the total number of search result pages
-    3. Builds a list of all search links to crawl
-    4. Insert the main search link as well for the caller to crawl
+    Visits search link, counts the total number of search result pages,
+    builds a list of all search links to crawl, and inserts the main
+    search link as well for the caller to crawl.
+
+    :param link: The search URL to start from
+    :param headers: Request headers dictionary
+    :return: List of all result page URLs to crawl
     """
 
     # Store links to crawl as UCAS returns few results per page

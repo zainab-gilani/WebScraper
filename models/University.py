@@ -11,6 +11,11 @@ from network_helper import get_with_retry
 
 class University:
     def __init__(self):
+        """
+        Initializes a new University object with empty attributes.
+
+        :return: None
+        """
         self.name = ""
         self.location = ""
         self.link = ""
@@ -21,14 +26,22 @@ class University:
     # enddef
 
     def print(self):
+        """
+        Prints the university name, location, and link to the console.
+
+        :return: None
+        """
         print(f"Name: {self.name}, Location: {self.location}, Link: {self.link}")
 
     # enddef
 
     def fetch_courses(self, headers):
         """
-        Obtains all links to all courses
-        Visits each course page and scrapes course details
+        Obtains all links to all courses, visits each course page,
+        and scrapes course details including name, type, duration, and requirements.
+
+        :param headers: Request headers dictionary for HTTP requests
+        :return: None
         """
         all_result_pages_to_crawl: [str] = get_links_to_crawl(self.link_all_courses, headers)
 
@@ -239,7 +252,11 @@ class University:
     # enddef
 
     def to_dict(self):
-        """Convert to dictionary"""
+        """
+        Converts the University object to a dictionary representation.
+
+        :return: Dictionary containing all university information
+        """
         courses_list = []
         for course in self.courses:
             course_dict = course.to_dict()
