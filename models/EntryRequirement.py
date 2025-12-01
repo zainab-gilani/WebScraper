@@ -263,26 +263,8 @@ class EntryRequirement:
         # Remove extra whitespace
         text = " ".join(text.split())
 
-        # Handle common truncation issues
-        text_lower = text.lower()
-
-        # If we just have "not" by itself, it probably means "not accepted"
-        if text_lower.strip() == "not":
-            return "Not accepted"
-        # endif
-
-        # If we have partial phrases, complete them
-        if text_lower.strip() in ["n/a", "na", "not available"]:
-            return "Requirements not specified"
-        # endif
-
-        # Handle UCAS-specific cases
-        if "ucas" in text_lower and "not" in text_lower:
-            if "not accepted" not in text_lower:
-                return text + " - Not accepted"
-            # endif
-        # endif
-
+        # Return cleaned text without changing it further
+        # The parse function will handle edge cases later
         return text
 
     # enddef
@@ -318,24 +300,31 @@ class EntryRequirement:
         for phrase in no_req_phrases:
             if phrase in text_lower:
                 req.has_requirements = False
-                # Set a cleaner display message
-                if phrase in ["not", "not accepted", "ucas not accepted"]:
-                    req.display_grades = "Not accepted"
-                else:
-                    req.display_grades = "Requirements not specified"
+                # Leave all fields empty for courses with no requirements
+                req.display_grades = ""
+                req.min_ucas_points = 0
+                req.min_grade_required = ""
                 return req
             # endif
         # endfor
 
         # Parse A-level requirements
-        # This regular expression is designed to find A-level grades in the text.
-        # - r'A\s*level\s*[-–]\s*' : It looks for "A level" (with any whitespace), followed by a hyphen.
-        # - ([A-Z*]{3,}) : It then looks for a group of at least 3 capital letters or asterisks (e.g., 'AAB', 'BCC'). This is the main grade.
-        # - (?:...)? : The last part is an optional group to catch ranges like 'BCC-BBB'.
+        # Using regex to find A-level grades in the text
+        # r'A\s*level\s*[-–]\s*' matches "A level" with any spaces then a hyphen
+        # ([A-Z*]{3,}) matches the grade letters like AAB or BCC
+        # (?:...)? is optional and catches ranges like BCC-BBB
         a_level_pattern = r'A\s*level\s*[-–]\s*([A-Z*]{3,}(?:\s*[-–]\s*[A-Z*]{3,})?)'
         a_level_match = re.search(a_level_pattern, text, re.IGNORECASE)
         if a_level_match:
             grades = a_level_match.group(1).strip()
+            # Check if the match is actually an edge case like "Not" instead of real grades
+            if grades.lower() in ["not", "not accepted", "n/a"]:
+                req.has_requirements = False
+                req.display_grades = ""
+                req.min_ucas_points = 0
+                req.min_grade_required = ""
+                return req
+            #endif
             req.display_grades = grades
             req.has_requirements = True
 
@@ -473,11 +462,11 @@ class EntryRequirement:
 
         # Parse UCAS Tariff Points
         # Handle "UCAS Tariff - 112 - 128 points" or "UCAS Tariff - 72 points"
-        # This regex finds UCAS tariff points.
-        # - r'UCAS\s+Tariff\s*[-–]\s*' : Looks for "UCAS Tariff" followed by a hyphen.
-        # - (\d+) : Finds the first number (the minimum points).
-        # - (?:\s*[-–]\s*(\d+))? : Looks for an optional second number for ranges (e.g., "112 - 128").
-        # - \s*points? : Allows for the word "points" at the end.
+        # Parse UCAS tariff points with regex
+        # r'UCAS\s+Tariff\s*[-–]\s*' matches "UCAS Tariff -"
+        # (\d+) grabs the first number (minimum points)
+        # (?:\s*[-–]\s*(\d+))? optionally grabs second number for ranges like "112-128"
+        # \s*points? allows "points" or "point" at the end
         ucas_pattern = r'UCAS\s+Tariff\s*[-–]\s*(\d+)(?:\s*[-–]\s*(\d+))?\s*points?'
         ucas_match = re.search(ucas_pattern, text, re.IGNORECASE)
         if ucas_match:
