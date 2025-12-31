@@ -244,10 +244,12 @@ class University:
 
                 # # ONLY ONE COURSE FOR NOW DURING TESTING
                 # break
+
             #endfor
 
             # # ONLY ONE COURSE PAGE FOR NOW DURING TESTING
             # break
+
         #endfor
     # enddef
 
