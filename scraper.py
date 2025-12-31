@@ -191,7 +191,7 @@ for link_to_crawl in all_result_pages_to_crawl:
 
             # Courses are always available for the next academic year
             # Calculate the next year
-            next_year = date.today().year + 1
+            next_year = date.today().year
 
             # Links seem to be the same for 'see all' where all the courses are listed for the university
             # "https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D=2026&refinementList%5Buniversity%5D%5B0%5D=The%20University%20of%20Law"
