@@ -294,7 +294,7 @@ class EntryRequirement:
             "no formal", "no specific", "no requirement", "requirements not specified",
             "not accepted", "ucas not accepted", "not available",
             # Handle partial text issues
-            "not", "n/a"
+            "n/a"
         ]
 
         for phrase in no_req_phrases:

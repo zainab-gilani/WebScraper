@@ -204,21 +204,19 @@ class University:
                     # Check if this contains actual points data (not just "N/A" etc)
                     if "N/A" not in required_points and required_points:
                         requirement = EntryRequirement()
-                        requirement.required_points_min = -1
-                        requirement.required_points_max = -1
+                        requirement.min_ucas_points = 0
 
                         try:
                             # Uses RegEx to scrape just the amount of points, not the entire text
                             match = re.search(r"(\d+)\s*-\s*(\d+)", required_points)
                             if match:
-                                requirement.required_points_min = int(match.group(1))
-                                requirement.required_points_max = int(match.group(2))
+                                requirement.min_ucas_points = int(match.group(1))
                                 requirement.has_requirements = True
                             else:
                                 match = re.search(r"(\d+)", required_points)
                                 if match:
                                     num = int(match.group(1))
-                                    requirement.required_points_min = num
+                                    requirement.min_ucas_points = num
                                     requirement.has_requirements = True
                                 #endif
                             #endif
