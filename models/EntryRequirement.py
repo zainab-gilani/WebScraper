@@ -263,6 +263,14 @@ class EntryRequirement:
         # Remove extra whitespace
         text = " ".join(text.split())
 
+        # Normalize common separators that break regex matching
+        text = text.replace("|", " ")
+        text = text.replace("•", " ")
+        text = text.replace("·", " ")
+
+        # Normalize A-level variants to reduce parsing misses
+        text = re.sub(r"A\s*[-–]\s*levels?", "A levels", text, flags=re.IGNORECASE)
+
         # Return cleaned text without changing it further
         # The parse function will handle edge cases later
         return text
@@ -292,7 +300,7 @@ class EntryRequirement:
         text_lower = text.lower()
         no_req_phrases = [
             "no formal", "no specific", "no requirement", "requirements not specified",
-            "not accepted", "ucas not accepted", "not available",
+            "not available",
             # Handle partial text issues
             "n/a"
         ]
@@ -310,10 +318,10 @@ class EntryRequirement:
 
         # Parse A-level requirements
         # Using regex to find A-level grades in the text
-        # r'A\s*level\s*[-–]\s*' matches "A level" with any spaces then a hyphen
+        # r'A\s*levels?\s*[:–-]?\s*' matches "A level", "A levels", with optional colon/dash
         # ([A-Z*]{3,}) matches the grade letters like AAB or BCC
         # (?:...)? is optional and catches ranges like BCC-BBB
-        a_level_pattern = r'A\s*level\s*[-–]\s*([A-Z*]{3,}(?:\s*[-–]\s*[A-Z*]{3,})?)'
+        a_level_pattern = r'A\s*[-–]?\s*levels?\s*[:–-]?\s*([A-Z*]{3,}(?:\s*[-–]\s*[A-Z*]{3,})?)'
         a_level_match = re.search(a_level_pattern, text, re.IGNORECASE)
         if a_level_match:
             grades = a_level_match.group(1).strip()
@@ -324,7 +332,7 @@ class EntryRequirement:
                 req.min_ucas_points = 0
                 req.min_grade_required = ""
                 return req
-            #endif
+            # endif
             req.display_grades = grades
             req.has_requirements = True
 

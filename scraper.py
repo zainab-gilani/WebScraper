@@ -3,8 +3,6 @@
 import json
 import os
 import urllib.parse
-import requests
-import re
 
 from bs4 import BeautifulSoup
 from requests import Response
@@ -35,6 +33,7 @@ count_without_req = 0
 # All universities - this list will store every University object I create
 all_universities: [University] = []
 
+
 def load_existing_universities(path: str) -> tuple[list[dict], set[str], int, int]:
     """
     Loads existing university data to enable resume behavior.
@@ -54,7 +53,7 @@ def load_existing_universities(path: str) -> tuple[list[dict], set[str], int, in
 
     if not isinstance(data, list):
         return [], set(), 0, 0
-    #endif
+    # endif
 
     existing_names = set()
     with_req = 0
@@ -63,55 +62,127 @@ def load_existing_universities(path: str) -> tuple[list[dict], set[str], int, in
     for uni in data:
         if not isinstance(uni, dict):
             continue
-        #endif
+        # endif
         name_value = uni.get("name")
         if name_value is None:
             name_value = ""
-        #endif
+        # endif
         name = name_value.strip()
         if name:
             existing_names.add(name)
-        #endif
+        # endif
 
         uni_has_requirements = False
         courses = uni.get("courses")
         if courses is None:
             courses = []
-        #endif
+        # endif
         for course in courses:
             requirements = course.get("requirements")
             if requirements is None:
                 requirements = []
-            #endif
+            # endif
             for req in requirements:
                 if not isinstance(req, dict):
                     continue
-                #endif
+                # endif
                 has_requirements = req.get("has_requirements")
                 min_points = req.get("min_ucas_points")
                 display_grades = req.get("display_grades")
                 if min_points is None:
                     min_points = 0
-                #endif
+                # endif
                 if has_requirements and (min_points > 0 or display_grades):
                     uni_has_requirements = True
                     break
-                #endif
-            #endfor
+                # endif
+            # endfor
             if uni_has_requirements:
                 break
-            #endif
-        #endfor
+            # endif
+        # endfor
 
         if uni_has_requirements:
             with_req += 1
         else:
             without_req += 1
-        #endif
-    #endfor
+        # endif
+    # endfor
 
     return data, existing_names, with_req, without_req
-#enddef
+
+
+# enddef
+
+def load_target_universities(path: str) -> set[str]:
+    """
+    Loads a newline-delimited list of university names to rescrape.
+
+    :param path: Text file path to load
+    :return: Set of university names
+    """
+    if not os.path.exists(path):
+        return set()
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception:
+        return set()
+    # endtry
+
+    names = set()
+    for line in lines:
+        name = line.strip()
+        if name:
+            names.add(name)
+        # endif
+    # endfor
+
+    return names
+
+
+# enddef
+
+def replace_university(existing_data: list[dict], university_dict: dict) -> list[dict]:
+    """
+    Replaces an existing university entry with the same name, or appends if new.
+
+    :param existing_data: Existing list of university dictionaries
+    :param university_dict: New university dictionary
+    :return: Updated list of university dictionaries
+    """
+    name_value = university_dict.get("name")
+    if name_value is None:
+        name_value = ""
+    # endif
+    target_name = name_value.strip()
+    if not target_name:
+        return existing_data
+    # endif
+
+    updated = []
+    for item in existing_data:
+        if not isinstance(item, dict):
+            updated.append(item)
+            continue
+        # endif
+        item_name_value = item.get("name")
+        if item_name_value is None:
+            item_name_value = ""
+        # endif
+        item_name = item_name_value.strip()
+        if item_name == target_name:
+            continue
+        # endif
+        updated.append(item)
+    # endfor
+
+    updated.append(university_dict)
+    return updated
+
+
+# enddef
 
 def save_progress(path: str, data: list[dict]) -> None:
     """
@@ -123,8 +194,10 @@ def save_progress(path: str, data: list[dict]) -> None:
     """
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-    #endwith
-#enddef
+    # endwith
+
+
+# enddef
 
 # Scraping logic...
 
@@ -146,6 +219,13 @@ headers = {
 all_result_pages_to_crawl: [str] = get_links_to_crawl("https://www.ucas.com/explore/search/providers?query=", headers)
 
 existing_data, existing_names, count_with_req, count_without_req = load_existing_universities("universities.json")
+target_universities = load_target_universities("unis_without_requirements.txt")
+
+if target_universities:
+    print(f"Targeted rescrape enabled for {len(target_universities)} universities")
+    count_with_req = 0
+    count_without_req = 0
+# endif
 
 for link_to_crawl in all_result_pages_to_crawl:
     # Now I'll loop through each of the results pages I found earlier.
@@ -199,16 +279,20 @@ for link_to_crawl in all_result_pages_to_crawl:
             encoded_uni_name = urllib.parse.quote(university.name)
 
             university.link_all_courses = f"https://www.ucas.com/explore/search/courses?query=&refinementList%5Bscheme%5D%5B0%5D=Undergraduate&refinementList%5BacademicYear%5D%5B0%5D={current_year}&refinementList%5Buniversity%5D%5B0%5D={encoded_uni_name}"
-            
+
             # Process this university
             break
-        #endfor
+        # endfor
 
-        if university.name in existing_names:
+        if target_universities and university.name not in target_universities:
+            continue
+        # endif
+
+        if university.name in existing_names and not target_universities:
             print(f"Skipping already-scraped university: {university.name}")
             continue
-        #endif
-        
+        # endif
+
         # # Skip if not Newcastle University (for testing)
         # if university.name != "Newcastle University":
         #     continue
@@ -246,27 +330,19 @@ for link_to_crawl in all_result_pages_to_crawl:
         # Track what type of university we found
         if uni_has_requirements:
             count_with_req += 1
-            all_universities.append(university)
-            existing_data.append(university.to_dict())
-            existing_names.add(university.name)
-            save_progress("universities.json", existing_data)
-            print(f"Found university WITH requirements ({count_with_req}): {university.name}")
-            # if count_with_req >= MAX_UNIS_WITH_REQ:
-            #     print(f"\nCollected enough samples: {count_with_req} with requirements, {count_without_req} without")
-            #     break
-            # #endif
+            label = "WITH"
+            count_value = count_with_req
         else:
             count_without_req += 1
-            all_universities.append(university)
-            existing_data.append(university.to_dict())
-            existing_names.add(university.name)
-            save_progress("universities.json", existing_data)
-            print(f"Found university WITHOUT requirements ({count_without_req}): {university.name}")
-            # if count_without_req >= MAX_UNIS_WITHOUT_REQ:
-            #     print(f"\nCollected enough samples: {count_with_req} with requirements, {count_without_req} without")
-            #     break
-            # #endif
+            label = "WITHOUT"
+            count_value = count_without_req
         # endif
+
+        all_universities.append(university)
+        existing_data = replace_university(existing_data, university.to_dict())
+        existing_names.add(university.name)
+        save_progress("universities.json", existing_data)
+        print(f"Found university {label} requirements ({count_value}): {university.name}")
 
     # endfor
 
@@ -275,7 +351,7 @@ for link_to_crawl in all_result_pages_to_crawl:
 #     print("Stopping - collected enough samples from all pages")
 #     break
 # #endif
-#endfor
+# endfor
 
 # Summary of what was collected
 print("\n")
@@ -297,4 +373,4 @@ for university in all_universities:
 if all_universities:
     save_progress("universities.json", existing_data)
     print("saved")
-#endif
+# endif
