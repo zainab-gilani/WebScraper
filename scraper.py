@@ -227,6 +227,9 @@ if target_universities:
     count_without_req = 0
 # endif
 
+total_targets = len(target_universities) if target_universities else 0
+rescraped_count = 0
+
 for link_to_crawl in all_result_pages_to_crawl:
     # Now I'll loop through each of the results pages I found earlier.
     # This request gets the HTML for one page of university listings.
@@ -343,6 +346,11 @@ for link_to_crawl in all_result_pages_to_crawl:
         existing_names.add(university.name)
         save_progress("universities.json", existing_data)
         print(f"Found university {label} requirements ({count_value}): {university.name}")
+
+        if target_universities:
+            rescraped_count += 1
+            print(f"Progress: {rescraped_count} / {total_targets} universities rescraped")
+        # endif
 
     # endfor
 
