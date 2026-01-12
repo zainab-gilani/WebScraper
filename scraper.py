@@ -3,15 +3,10 @@
 import json
 import os
 import urllib.parse
-
-from bs4 import BeautifulSoup
-from requests import Response
 from datetime import date
-from scrape_search_results import *
+
 from models.University import University
-from models.Course import Course
-from models.EntryRequirement import EntryRequirement
-from network_helper import get_with_retry
+from scrape_search_results import *
 
 # Development settings: Limit scraping for testing
 # These help me test the scraper without downloading everything - saves time during development
