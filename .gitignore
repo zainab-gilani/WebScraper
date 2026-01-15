@@ -21,6 +21,9 @@ ENV/
 
 # Output
 universities.json
+failed_urls.txt
+unis_without_requirements.txt
+FUNCTION_DOCUMENTATION.md
 
 # Backup files
 *.backup
