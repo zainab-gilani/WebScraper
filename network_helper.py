@@ -1,6 +1,6 @@
 import time
+
 import requests
-from requests import Response
 
 
 def log_failed_url(url, reason):
