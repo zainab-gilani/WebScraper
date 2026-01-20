@@ -1,5 +1,4 @@
 # Represents and stores university details
-import requests
 import re
 
 from bs4 import BeautifulSoup
@@ -8,6 +7,7 @@ from .Course import Course
 from .EntryRequirement import EntryRequirement
 from scrape_search_results import get_links_to_crawl
 from network_helper import get_with_retry
+
 
 class University:
     def __init__(self):
@@ -51,13 +51,13 @@ class University:
         for link_to_crawl in all_result_pages_to_crawl:
             # The following is only to obtain the total number of pages to crawl
             course_page: Response = get_with_retry(link_to_crawl, headers)
-            
+
             # Check if the request failed
             if course_page is None:
                 print(f"Failed to fetch course page {link_to_crawl}, skipping...")
                 continue
-            #endif
-            
+            # endif
+
             course_soup = BeautifulSoup(course_page.text, "html.parser")
 
             # find all the centered elements
@@ -73,20 +73,20 @@ class University:
                 name_tag = content_element.select_one("p.header__text")
                 if name_tag:
                     course.name = name_tag.text.strip()
-                #endif
+                # endif
 
                 # link
                 link_tag = content_element.select_one("a.header")
                 if link_tag:
                     course.link = link_tag.get("href")
-                #endif
+                # endif
 
                 # Check if this course has multiple options
                 # If details contain "Options" it means there are multiple course variants
                 details_tag = content_element.select_one("p.course-display__details")
                 if details_tag:
                     details = details_tag.get_text(strip=True)
-                    
+
                     # Check if this is a summary (contains "Options")
                     if "Options" in details or "Option" in details:
                         # This course has multiple options - details will be fetched from the course page
@@ -103,31 +103,32 @@ class University:
                         for p in details.split("·"):
                             stripped_part = p.strip()
                             parts.append(stripped_part)
-                        #endfor
+                        # endfor
 
                         # Parse the parts - the order can vary, so we need to be smart about it
                         # Typical patterns:
                         # - BA (Hons) · 3 years · Full-time · Location · September 2026
                         # - BA (Hons) · 2 Years · Full-time (intensive) · 2026
-                        
+
                         # Initialize all fields
                         course.course_type = ""
                         course.duration = ""
                         course.mode = ""
                         course.location = ""
                         course.start_date = ""
-                        
+
                         for part in parts:
                             # Check if it's a qualification (contains BA, BSc, MSc, etc.)
                             is_qualification = False
-                            qualification_types = ["BA", "BSc", "MSc", "MA", "BEng", "MEng", "PgDip", "PhD", "MPhil", "LLB", "MBA"]
+                            qualification_types = ["BA", "BSc", "MSc", "MA", "BEng", "MEng", "PgDip", "PhD", "MPhil",
+                                                   "LLB", "MBA"]
                             for qual in qualification_types:
                                 if qual in part:
                                     is_qualification = True
                                     break
-                                #endif
-                            #endfor
-                            
+                                # endif
+                            # endfor
+
                             if is_qualification:
                                 course.course_type = part
                             else:
@@ -138,22 +139,23 @@ class University:
                                     if dur in part.lower():
                                         is_duration = True
                                         break
-                                    #endif
-                                #endfor
-                                
+                                    # endif
+                                # endfor
+
                                 if is_duration:
                                     course.duration = part
                                 else:
                                     # Check if it's mode (contains time/distance/online)
                                     is_mode = False
-                                    mode_words = ["full-time", "part-time", "distance", "online", "intensive", "flexible"]
+                                    mode_words = ["full-time", "part-time", "distance", "online", "intensive",
+                                                  "flexible"]
                                     for mode in mode_words:
                                         if mode in part.lower():
                                             is_mode = True
                                             break
-                                        #endif
-                                    #endfor
-                                    
+                                        # endif
+                                    # endfor
+
                                     if is_mode:
                                         course.mode = part
                                     else:
@@ -163,14 +165,16 @@ class University:
                                         else:
                                             # Check if it's a month+year start date
                                             is_start_date = False
-                                            month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                                            month_names = ["January", "February", "March", "April", "May", "June",
+                                                           "July", "August", "September", "October", "November",
+                                                           "December"]
                                             for month in month_names:
                                                 if month in part:
                                                     is_start_date = True
                                                     break
-                                                #endif
-                                            #endfor
-                                            
+                                                # endif
+                                            # endfor
+
                                             if is_start_date:
                                                 course.start_date = part
                                             else:
@@ -178,29 +182,29 @@ class University:
                                                 # If we haven't set location yet and this doesn't look like other fields
                                                 if not course.location and part:
                                                     course.location = part
-                                                #endif
-                                            #endif
-                                        #endif
-                                    #endif
-                                #endif
-                            #endif
-                        #endfor
-                    #endif
+                                                # endif
+                                            # endif
+                                        # endif
+                                    # endif
+                                # endif
+                            # endif
+                        # endfor
+                    # endif
                 else:
                     course.course_type = ""
                     course.duration = ""
                     course.mode = ""
                     course.location = ""
                     course.start_date = ""
-                #endif
+                # endif
 
                 # Try to get UCAS points from search results page
                 points_tag = content_element.select_one("p.course-display__tariff")
-                
+
                 # Only create a requirement if we find actual data
                 if points_tag:
                     required_points = points_tag.text.strip()
-                    
+
                     # Check if this contains actual points data (not just "N/A" etc)
                     if "N/A" not in required_points and required_points:
                         requirement = EntryRequirement()
@@ -218,22 +222,22 @@ class University:
                                     num = int(match.group(1))
                                     requirement.min_ucas_points = num
                                     requirement.has_requirements = True
-                                #endif
-                            #endif
-                            
+                                # endif
+                            # endif
+
                             # Only add if we found actual points
                             if requirement.has_requirements:
                                 course.requirements.append(requirement)
-                            #endif
+                            # endif
                         except ValueError:
                             # Don't add anything if number conversion fails
                             pass
                         except Exception as error:
                             # Don't add anything if other parsing fails
                             pass
-                        #endtry
-                    #endif
-                #endif
+                        # endtry
+                    # endif
+                # endif
 
                 self.courses.append(course)
 
@@ -243,12 +247,13 @@ class University:
                 # # ONLY ONE COURSE FOR NOW DURING TESTING
                 # break
 
-            #endfor
+            # endfor
 
             # # ONLY ONE COURSE PAGE FOR NOW DURING TESTING
             # break
 
-        #endfor
+        # endfor
+
     # enddef
 
     def to_dict(self):
@@ -262,7 +267,7 @@ class University:
             course_dict = course.to_dict()
             courses_list.append(course_dict)
         # endfor
-        
+
         result = {
             "name": self.name,
             "location": self.location,
@@ -271,5 +276,5 @@ class University:
             "courses": courses_list
         }
         return result
-    #enddef
+    # enddef
 # endclass

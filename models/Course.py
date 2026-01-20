@@ -1,4 +1,4 @@
-import requests
+import json
 import re
 
 from bs4 import BeautifulSoup
@@ -63,13 +63,12 @@ class Course:
 
         single_course_soup = BeautifulSoup(single_course_page.text, "html.parser")
 
-        
         # Look for course options information in different places
         # Check for the options bar with course details
         options_bar = single_course_soup.find("div", class_="options-bar")
         if not options_bar:
             options_bar = single_course_soup.find("div", class_="options-bar-custom")
-        
+
         if options_bar:
             # Extract course details from data-options-bar-item-value attributes
             # Find all elements that have the data-options-bar-item-value attribute
@@ -78,14 +77,14 @@ class Course:
             for element in all_elements:
                 if element.has_attr("data-options-bar-item-value"):
                     elements_with_values.append(element)
-                #endif
-            #endfor
-            
+                # endif
+            # endfor
+
             if elements_with_values:
                 for elem in elements_with_values:
                     value = elem.get("data-options-bar-item-value", "")
                     label_text = elem.get_text(strip=True).lower()
-                    
+
                     # Map the values to course fields based on label
                     if "qualification" in label_text:
                         self.course_type = value
@@ -97,10 +96,10 @@ class Course:
                         self.mode = value
                     elif "duration" in label_text:
                         self.duration = value
-                    #endif
-                #endfor
-            #endif
-        
+                    # endif
+                # endfor
+            # endif
+
         # Check if there's a course options table (for courses with multiple options)
         course_options_table = single_course_soup.find("table")
         if course_options_table:
@@ -110,13 +109,13 @@ class Course:
                 first_row = tbody.find("tr")
                 if first_row:
                     tds = first_row.find_all("td")
-                    
+
                     # Different table structures based on number of columns
                     if len(tds) >= 5:  # Standard table with at least 5 columns
                         # Extract details from table columns
                         # Column 0: Location
                         self.location = tds[0].get_text(strip=True)
-                        
+
                         # Column 1: Qualification
                         qual_div = tds[1].find("strong")
                         if qual_div:
@@ -124,20 +123,20 @@ class Course:
                         else:
                             # Try getting text directly if no strong tag
                             self.course_type = tds[1].get_text(strip=True)
-                        #endif
-                        
+                        # endif
+
                         # Column 2: Study mode
                         self.mode = tds[2].get_text(strip=True)
-                        
+
                         # Column 3: Duration
                         self.duration = tds[3].get_text(strip=True)
-                        
+
                         # Column 4: Start date
                         self.start_date = tds[4].get_text(strip=True)
-                    #endif
-                #endif
-            #endif
-        #endif
+                    # endif
+                # endif
+            # endif
+        # endif
 
         # Try multiple selectors for entry requirements
         requirement_texts = []
@@ -151,12 +150,12 @@ class Course:
                 if qual in label.text:
                     found_qual = True
                     break
-                #endif
-            #endfor
+                # endif
+            # endfor
             if found_qual:
                 # Add the label text
                 requirement_texts.append(label.text.strip())
-                
+
                 # Also try to get the detailed content from the accordion
                 # Find the parent accordion item
                 accordion_item = label.find_parent("li", class_="accordion__child")
@@ -168,11 +167,11 @@ class Course:
                         if detailed_text and len(detailed_text) < 1000:  # Reasonable length
                             requirement_texts.append(detailed_text)
                             # print(f"Found detailed accordion content: {detailed_text[:150]}...")
-                        #endif
-                    #endif
-                #endif
-            #endif
-        #endfor
+                        # endif
+                    # endif
+                # endif
+            # endif
+        # endfor
 
         # Look for requirement sections
         # Find sections with class names containing requirement words
@@ -183,22 +182,122 @@ class Course:
                 class_names = div.get("class", [])
                 for class_name in class_names:
                     class_name_lower = class_name.lower()
-                    if ("requirement" in class_name_lower or 
-                        "entry" in class_name_lower or 
-                        "qualification" in class_name_lower):
+                    if ("requirement" in class_name_lower or
+                            "entry" in class_name_lower or
+                            "qualification" in class_name_lower):
                         req_sections.append(div)
                         break
-                    #endif
-                #endfor
-            #endif
-        #endfor
-        
+                    # endif
+                # endfor
+            # endif
+        # endfor
+
         for section in req_sections:
             text = section.get_text(strip=True)
-            if text and len(text) < 500:  # Skip really long text
+            if text and len(text) < 1500:  # Skip really long text
                 requirement_texts.append(text)
-            #endif
-        #endfor
+            # endif
+        # endfor
+
+        # Capture requirement tables where labels and grades are in separate cells
+        for row in single_course_soup.find_all("tr"):
+            cells = row.find_all(["th", "td"])
+            if len(cells) < 2:
+                continue
+            # endif
+            left_text = cells[0].get_text(" ", strip=True)
+            right_text = cells[1].get_text(" ", strip=True)
+            if not left_text or not right_text:
+                continue
+            # endif
+            if re.search(r"A\s*[-–]?\s*levels?|UCAS\s*Tariff|BTEC", left_text, re.IGNORECASE):
+                combined_row = f"{left_text} {right_text}"
+                if len(combined_row) < 500:
+                    requirement_texts.append(combined_row)
+                # endif
+            # endif
+        # endfor
+
+        # Capture definition lists (dt/dd pairs) for entry requirements
+        for dl in single_course_soup.find_all("dl"):
+            dts = dl.find_all("dt")
+            dds = dl.find_all("dd")
+            for dt, dd in zip(dts, dds):
+                left_text = dt.get_text(" ", strip=True)
+                right_text = dd.get_text(" ", strip=True)
+                if not left_text or not right_text:
+                    continue
+                # endif
+                if re.search(r"A\s*[-–]?\s*levels?|UCAS\s*Tariff|BTEC", left_text, re.IGNORECASE):
+                    combined_pair = f"{left_text} {right_text}"
+                    if len(combined_pair) < 500:
+                        requirement_texts.append(combined_pair)
+                    # endif
+                # endif
+            # endfor
+        # endfor
+
+        # Fallback: grab nearby text around key requirement keywords
+        keyword_pattern = re.compile(r"A\s*[-–]?\s*levels?|UCAS\s*Tariff|BTEC", re.IGNORECASE)
+        for text_node in single_course_soup.find_all(string=keyword_pattern):
+            parent = text_node.parent
+            if not parent:
+                continue
+            # endif
+            candidate = parent.get_text(" ", strip=True)
+            if candidate and len(candidate) < 500:
+                requirement_texts.append(candidate)
+            # endif
+        # endfor
+
+        # JSON-LD fallback (UCAS often embeds structured requirements here)
+        json_ld_requirements = []
+        for script in single_course_soup.find_all("script", type="application/ld+json"):
+            raw = script.string
+            if not raw:
+                continue
+            # endif
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            # endtry
+
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                # endif
+                if item.get("@type") != "Course":
+                    continue
+                # endif
+                prereqs = item.get("coursePrerequisites") or []
+                if not isinstance(prereqs, list):
+                    continue
+                # endif
+                for prereq in prereqs:
+                    if not isinstance(prereq, dict):
+                        continue
+                    # endif
+                    framework = prereq.get("educationalFramework") or ""
+                    target = prereq.get("targetName") or ""
+                    if not framework or not target:
+                        continue
+                    # endif
+                    framework_lower = framework.lower()
+                    if "a level" in framework_lower:
+                        json_ld_requirements.append(f"A level - {target}")
+                    elif "btec" in framework_lower:
+                        json_ld_requirements.append(f"BTEC - {target}")
+                    elif "ucas tariff" in framework_lower:
+                        json_ld_requirements.append(f"UCAS Tariff - {target}")
+                    # endif
+                # endfor
+            # endfor
+        # endfor
+
+        if json_ld_requirements:
+            requirement_texts.extend(json_ld_requirements)
 
         # Parse all requirement texts and combine into one requirement
         if requirement_texts:
@@ -210,18 +309,18 @@ class Course:
                 # Only add if there are actual requirements
                 if parsed_req.has_requirements:
                     self.requirements.append(parsed_req)
-                #endif
+                # endif
             except Exception as e:
                 print(f"Error parsing requirements: {e}")
                 # Don't add any requirements if parsing fails
-            #endtry
-        #endif
+            # endtry
+        # endif
 
         # Clean up requirements - remove any empty ones if we have real ones
         self.clean_up_requirements()
 
-    #enddef
-    
+    # enddef
+
     def clean_up_requirements(self):
         """
         Removes empty requirements if we have real ones.
@@ -230,28 +329,29 @@ class Course:
         """
         if not self.requirements:
             return
-        #endif
-        
+        # endif
+
         # Check if we have any real requirements
         has_real_requirements = False
         for req in self.requirements:
             if req.has_requirements:
                 has_real_requirements = True
                 break
-            #endif
-        #endfor
-        
+            # endif
+        # endfor
+
         # If we have real requirements, remove empty ones
         if has_real_requirements:
             cleaned_requirements = []
             for req in self.requirements:
                 if req.has_requirements:
                     cleaned_requirements.append(req)
-                #endif
-            #endfor
+                # endif
+            # endfor
             self.requirements = cleaned_requirements
-        #endif
-    #enddef
+        # endif
+
+    # enddef
 
     # # Extract all university content cards from page
     # for content_element in content_elements:

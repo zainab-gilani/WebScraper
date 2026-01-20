@@ -1,8 +1,8 @@
-import requests
 import re
 from bs4 import BeautifulSoup
 from requests import Response
 from network_helper import get_with_retry
+
 
 def get_links_to_crawl(link, headers):
     """
@@ -20,19 +20,19 @@ def get_links_to_crawl(link, headers):
 
     # 1. Visit main search page
     page: Response = get_with_retry(link, headers)
-    
+
     # Check if the request failed
     if page is None:
         print(f"Failed to fetch {link}")
         return []
-    #endif
+    # endif
 
     soup = BeautifulSoup(page.text, "html.parser")
 
     # 2. Get total page count of search results
 
     page_results = soup.find_all("ul", class_="pagination__list")
-    
+
     total_pages = 0
     for page_result in page_results:
         result_items = page_result.find_all("li", class_="pagination__item")
@@ -49,25 +49,25 @@ def get_links_to_crawl(link, headers):
                         page_match = re.search(r"page\s+(\d+)", page_label.lower())
                         if page_match:
                             total_pages = int(page_match.group(1))
-                        #endif
-                    #endif
-                #endif
-            #endfor
-        #endfor
-    #endfor
+                        # endif
+                    # endif
+                # endif
+            # endfor
+        # endfor
+    # endfor
 
     print(f"Total results for search: {total_pages}")
 
     # 3. Build links pages on total pages found in results that we will need to crawl
 
-    for i in range(2, total_pages+1):
+    for i in range(2, total_pages + 1):
         next_page = f"{link}&page={i}"
 
         all_result_pages_to_crawl.append(next_page)
-    #endfor
+    # endfor
 
     # 4. We will re-visit this first page to scrape all universities from this page
     all_result_pages_to_crawl.insert(0, link)
 
     return all_result_pages_to_crawl
-#enddef
+# enddef
