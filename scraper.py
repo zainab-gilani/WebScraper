@@ -44,6 +44,7 @@ def load_existing_universities(path: str) -> tuple[list[dict], set[str], int, in
     """
     if not os.path.exists(path):
         return [], set(), 0, 0
+    #endif
 
     try:
         with open(path, "r", encoding="utf-8") as f:
