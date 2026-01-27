@@ -31,6 +31,9 @@ def is_bachelor_course(course_type: str) -> bool:
     return False
 
 
+# enddef
+
+
 def has_any_requirements(courses: list[dict]) -> bool:
     """
     Checks whether any course in the list has entry requirements.
@@ -65,6 +68,8 @@ def has_any_requirements(courses: list[dict]) -> bool:
     # endfor
     return False
 
+
+# enddef
 
 def has_missing_bachelor_requirements(courses: list[dict]) -> bool:
     """
